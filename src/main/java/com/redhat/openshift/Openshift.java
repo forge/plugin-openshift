@@ -1,30 +1,33 @@
+/*
+ *  Copyright 2010 Red Hat, Inc.
+ *  
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License. You may obtain a
+ *  copy of the License at
+ *  
+ *  	http://www.apache.org/licenses/LICENSE-2.0
+ *  
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *  License for the specific language governing permissions and limitations
+ *  under the License.
+ */
 package com.redhat.openshift;
 
-import java.lang.reflect.Method;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Response;
 
-import org.apache.http.client.HttpClient;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.conn.params.ConnManagerParams;
-import org.apache.http.conn.scheme.PlainSocketFactory;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.conn.ssl.SSLSocketFactory;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpParams;
-import org.jboss.forge.project.Project;
+import org.jboss.forge.shell.Shell;
 import org.jboss.forge.shell.ShellColor;
 import org.jboss.forge.shell.ShellPrompt;
 import org.jboss.forge.shell.plugins.Alias;
@@ -32,173 +35,308 @@ import org.jboss.forge.shell.plugins.Command;
 import org.jboss.forge.shell.plugins.Option;
 import org.jboss.forge.shell.plugins.PipeIn;
 import org.jboss.forge.shell.plugins.PipeOut;
-import org.jboss.resteasy.client.ClientExecutor;
-import org.jboss.resteasy.client.ProxyFactory;
-import org.jboss.resteasy.client.core.executors.ApacheHttpClient4Executor;
-import org.jboss.resteasy.plugins.providers.RegisterBuiltin;
-import org.jboss.resteasy.spi.ResteasyProviderFactory;
 
-import com.redhat.openshift.resteasy.CloudAccountDao;
-import com.redhat.openshift.resteasy.RedHatSSODao;
-import com.redhat.openshift.resteasy.model.CloudAccount;
+import com.redhat.openshift.completer.AppIdListCompleter;
+import com.redhat.openshift.completer.CloudArchCompleter;
+import com.redhat.openshift.completer.CloudIdListCompleter;
+import com.redhat.openshift.completer.CloudProviderCompleter;
+import com.redhat.openshift.completer.CloudRegionCompleter;
+import com.redhat.openshift.completer.EnvIdListCompleter;
+import com.redhat.openshift.dao.ApplicationDao;
+import com.redhat.openshift.dao.CloudAccountDao;
+import com.redhat.openshift.dao.EnvironmentDao;
+import com.redhat.openshift.dao.exceptions.ConnectionException;
+import com.redhat.openshift.dao.exceptions.InternalClientException;
+import com.redhat.openshift.dao.exceptions.InvalidCredentialsException;
+import com.redhat.openshift.dao.exceptions.OperationFailedException;
+import com.redhat.openshift.model.Application;
+import com.redhat.openshift.model.CloudAccount;
+import com.redhat.openshift.model.Environment;
 
-@Alias("openshift")
+/**
+ * @author <a href="mailto:kraman+forge@gmail.com">Krishna Raman</a>
+ *  
+ */
+@Alias("rhc")
 @Singleton
 public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
-	@Inject
-	private ShellPrompt prompt;
+	@Inject private ShellPrompt prompt;
+	@Inject private Shell shell;
+	@Inject private CloudAccountDao cloudAccountDao;
+	@Inject private EnvironmentDao environmentDao;
+	@Inject private ApplicationDao applicationDao;
 	
-	@Inject
-	private Project project;
+	@Inject private LoginCommands loginCommands;
+	@Inject private CloudCommands cloudCommands;
+	@Inject private EnvironmentCommands envCommands;
+	@Inject private ApplicationCommands appCommands;
 	
-	private ClientExecutor clientExecutor;
+	private Properties rhcProperties;
+	private String ssoCookie;
+	private String flexHost;
+	private String flexContext;
 	
-	public Openshift() throws Exception {
-		ResteasyProviderFactory providerFactory = ResteasyProviderFactory.getInstance();
-		RegisterBuiltin.register(providerFactory);
-		clientExecutor = createExecutor();
+	protected List<CloudAccount> cachedCloudList;
+	protected List<Environment> cachedEnvironmentList;
+	protected List<Application> cachedApplicationList;
+	protected ArrayList<String> supportedCloudProviders;
+	protected ArrayList<String> supportedCloudRegions;
+	
+	static{
 	}
-	@Produces
-	public ClientExecutor createExecutor(){
-		SSLSocketFactory sslFactory = null;
-		try{
-			SSLContext ctx = SSLContext.getInstance("TLS");
-			if(true){
-		        X509TrustManager tm = new X509TrustManager() {
-		
-		            public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {
-		            }
-		
-		            public void checkServerTrusted(X509Certificate[] xcs, String string) throws CertificateException {
-		            }
-		
-		            public X509Certificate[] getAcceptedIssuers() {
-		                return null;
-		            }
-		        };
-				ctx.init(null, new TrustManager[]{tm}, null);
+	
+	public Openshift(){
+		rhcProperties = new Properties();
+		ssoCookie = null;
+		loadRhcProperties();
+	}
+	
+	synchronized protected void updateCache(PipeOut out){
+		cachedApplicationList = new ArrayList<Application>();
+		cachedCloudList = new ArrayList<CloudAccount>();
+		cachedEnvironmentList = new ArrayList<Environment>();
+		supportedCloudProviders = new ArrayList<String>();
+		supportedCloudRegions = new ArrayList<String>();
+		try {
+			cachedCloudList = cloudAccountDao.listClouds(ssoCookie, flexHost, flexContext);
+			supportedCloudProviders = cloudAccountDao.listSupportedCloudProviders(ssoCookie, flexHost, flexContext);
+			for (String type : supportedCloudProviders) {
+				supportedCloudRegions.addAll(cloudAccountDao.listSupportedCloudLocations(ssoCookie, flexHost, flexContext, type));
 			}
-			sslFactory = new SSLSocketFactory(ctx);
-			sslFactory.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-		}catch(Exception e){
+			cachedEnvironmentList = environmentDao.listEnvironments(ssoCookie, flexHost, flexContext);
+			for (Environment e : this.cachedEnvironmentList) {
+				try{
+					this.cachedApplicationList.addAll(applicationDao.listApplications(e));
+				}catch(Exception ex){
+					out.println(ShellColor.CYAN, "Unable to load application data for environment: " + e.getName());
+				}
+			}
+		} catch (InternalClientException e) {
+			out.println(ShellColor.RED, "Unable to load cache data");
+			e.printStackTrace();
+		} catch (ConnectionException e) {
+			out.println(ShellColor.RED, "Unable to connect to Openshift Flex server");
+			e.printStackTrace();
+		} catch (InvalidCredentialsException e) {
+			out.println(ShellColor.RED, "Your login credentials have expired. Please log in again.");
+			e.printStackTrace();
+		} catch (OperationFailedException e) {
+			out.println(ShellColor.RED, "Unable to load cache data");
 			e.printStackTrace();
 		}
-		
-	    HttpParams params = new BasicHttpParams();
-	    ConnManagerParams.setMaxTotalConnections(params, 3);
-	    ConnManagerParams.setTimeout(params, 60000);
-	    SchemeRegistry schemeRegistry = new SchemeRegistry();
-	    schemeRegistry.register(new Scheme("http", PlainSocketFactory.getSocketFactory(), 80));
-        schemeRegistry.register(new Scheme("https", sslFactory, 443));
-	    ClientConnectionManager cm = new ThreadSafeClientConnManager(params, schemeRegistry);
-	    HttpClient httpClient = new DefaultHttpClient(cm, params);
-	    return new ApacheHttpClient4Executor(httpClient);
-	}
-	private String login(String login, String password, PipeOut out){
-		do{
-			if(login == null){
-				out.print("Login: ");
-				login = prompt.prompt();
-			}
-			if(login.trim().length() < 6){
-				out.print(ShellColor.RED, "Login must be at least 6 characters\n");
-				login = null;
-			}
-			if(login.matches("[\"$\\^<>|%/;:,\\\\*=~]")){
-				out.print(ShellColor.RED, "Login may not contain any of these characters: (\") ($) (^) (<) (>) (|) (%) (/) (;) (:) (,) (\\) (*) (=) (~)\n");
-				login = null;
-			}
-		}while(login == null);
-		
-		if(password == null || password.trim().equals("")){
-			out.print("Password: ");
-			password = prompt.prompt();
-		}
-		
-		out.print(ShellColor.BOLD, "Logging into Openshift Flex as " + login + "\n");
-		RedHatSSODao loginClient = ProxyFactory.create(RedHatSSODao.class, "https://www.redhat.com");
-		Response response = loginClient.login(login, password); //6M3RhfbTQV
-		String ssoCookie = (String) response.getMetadata().get("Set-Cookie").get(0);
-		String cookieValue = ssoCookie.split(";")[0].split("=")[1];
-		return cookieValue;
 	}
 	
-	private String repeat(String pattern, int times){
-		StringBuilder sb = new StringBuilder();
-		for(int i=0;i<times;i++)
-			sb.append(pattern);
-		return sb.toString();
-	}
-	
-	private void printRowDelim(int[] columnSizes, int indent, PipeOut out){
-		out.print(repeat("    ", indent));
-		out.print("+");
-		for(int i=0;i<columnSizes.length;i++){
-			out.print(repeat("-", columnSizes[i] + 2));
-			out.print("+");
+	private void loadRhcProperties(){
+		try{
+			//load baked in properties
+			InputStream stream = Openshift.class.getClassLoader().getResourceAsStream("openshift.properties");
+			if(stream != null)
+				rhcProperties.load(stream);
+			else
+				System.err.println("Unable to load configuration from plugnin jar");
+		}catch(IOException e){
+			System.err.println("Unable to load configuration from plugnin jar");
 		}
-		out.println();
-	}
-	
-	private void printTable( String[] columnHeader, String[] fieldNames, int[] columnSizes, List<?> data, int indent, PipeOut out) throws Exception{
-		printRowDelim(columnSizes, indent, out);
-		out.print(repeat("    ", indent));
-		out.print("| ");
-		for(int i=0;i<columnHeader.length;i++){
-			out.print(String.format("%" + columnSizes[i] + "s ", columnHeader[i]));
-			out.print("| ");
+		try{
+			//load baked in properties
+			rhcProperties.load(new FileInputStream(new File( System.getProperty("user.home") + 
+					File.separator + ".openshift" + File.separator + "openshift.conf")));
+		}catch(IOException e){
+			System.err.println("Unable to load configuration from user home");
+		}catch(SecurityException e){
+			System.err.println("Unable to load configuration from user home");
 		}
-		out.println();
-		printRowDelim(columnSizes, indent, out);
 		
-		for (Object object : data) {
-			out.print(repeat("    ", indent));
-			out.print("| ");
-			for(int i=0;i<fieldNames.length;i++){
-				Method mth = object.getClass().getMethod("get" + fieldNames[i], new Class[]{});
-				String str = mth.invoke(object).toString();
-				out.print(String.format("%" + columnSizes[i] + "s ", str));
-				out.print("| ");
-			}
-			out.println();
-		}
-		printRowDelim(columnSizes, indent, out);
+		String flexUriStr = rhcProperties.getProperty("flex_server").trim();
+		if(!flexUriStr.startsWith("https"))
+			flexUriStr = "https://" + flexUriStr;
+				
+		URI flexUri = URI.create(flexUriStr);
+		flexHost = flexUri.getHost();
+		flexContext = flexUri.getPath() + "/rest";
+	}
+	
+	@Command("login")
+	public void login(@PipeIn String in, PipeOut out,
+			@Option(name="login",required=false, description="Login name", shortName="l") String login,
+			@Option(name="password",required=false, description="Password", shortName="p") String password){
+		this.ssoCookie = loginCommands.login(in, out, rhcProperties, prompt, login, password);
+		out.print("Preloading cache...");
+		updateCache(out);
+		out.println(ShellColor.GREEN,"[OK]");
+	}
+	
+	@Command("register-cloud")
+	public void registerCloud(@PipeIn String in, PipeOut out,
+			@Option(name="name", required=true, description="Name of the new cloud account") String cloudName,
+			@Option(name="provider", completer=CloudProviderCompleter.class, required=true, description="Cloud provider", defaultValue="EC2") String cloudProvider,
+			@Option(name="account", required=true, description="Cloud provider account ID") String account,
+			@Option(name="credentials", required=true, description="Cloud provider credentials") String credentials,
+			@Option(name="secrey-key", required=true, description="Cloud provider secret key") String secretKey){
+		cloudCommands.registerCloud(in, out, cloudName, cloudProvider, account, credentials, secretKey);
 	}
 	
 	@Command("list-clouds")
-	public void listClouds(@PipeIn String in, PipeOut out,
-			@Option(name="loginName",required=false) String loginName,
-			@Option(name="password",required=false) String password){
-		String sso = login(loginName,password,out);
-		
-		CloudAccountDao cloudAccountDao = ProxyFactory.create(CloudAccountDao.class, "https://192.168.10.6/cosmodrome/rest", clientExecutor);
-		List<CloudAccount> list = cloudAccountDao.list(sso);
-		try {
-			printTable(new String[]{"Environment Id", "Name", "Type"},
-					   new String[]{"Id"			,"Name"	, "Type"},
-					   new int[]{   10				,15		,20},
-					   list, 0, out);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+	public void listClouds(@PipeIn String in, PipeOut out){
+		cloudCommands.listClouds(in, out);
 	}
 	
-//	@Command("deploy")
-//	public void deploy(@PipeIn String in, PipeOut out,
-//			@Option(name="loginName") String loginName, 
-//			@Option(name="cloudProvider", completer=CloudProviderCompleter.class) String cloudProvider 
-//			)
-//	{
-//		String password = prompt.prompt("Enter your OpenShift password.");
-//		
-//		FileResource<?> finalArtifact = (FileResource<?>) project.getFacet(PackagingFacet.class).getFinalArtifact();
-//		finalArtifact.exists();
-//	}
-//	
-//	@Command
-//	public void undeploy(@PipeIn InputStream in, PipeOut out)
-//	{
-//		
-//	}
+	@Command("deregister-cloud")
+	public void deregisterClouds(@PipeIn String in, PipeOut out,
+			@Option(name="cloudId",required=true,description="Name or ID of the cloud account to be deleted") String cloudId){
+		cloudCommands.deregisterClouds(in, out, cloudId);
+	}
 	
+	@Command("list-environments")
+	public void listEnvironments(@PipeIn String in, PipeOut out){
+		envCommands.listEnvironments(in, out);
+	}
+	
+	@Command("create-environment")
+	public void createEnvironment(@PipeIn String in, PipeOut out,
+			@Option(name="name",required=true, description="Name of the new environment") String environmentName, 
+			@Option(name="adminPassword",required=true, description="Password for the admin user") String adminPassword,
+			@Option(name="cloudId",required=true, description="Name or ID of the cloud account to use",completer=CloudIdListCompleter.class) String cloudId, 
+			@Option(name="num-servers",required=true,defaultValue="1",
+				description="Number of servers to start the environment with") String numNodes, 
+			@Option(name="location",required=true,defaultValue="us-east-1",completer=CloudRegionCompleter.class,
+				description="Cloud location/region to create the environment in") String location, 
+			@Option(name="arch",required=true,completer=CloudArchCompleter.class, 
+				description="VM architecture to use for this environment (32 or 64)") String architecture, 
+			@Option(name="load-balanced",required=true,flagOnly=true,defaultValue="false",
+				description="Does the environment need a load balancer?") String isLoadBalanced, 
+			@Option(name="min-cores-per-node",required=true,defaultValue="1",
+				description="Number of cores per server") String minCoresPerNode, 
+			@Option(name="min-volume-size-per-node",required=true,defaultValue="10", 
+				description="File system volume size in GB") String minVolumeSizePerNode, 
+			@Option(name="min-memory-per-node",required=true,defaultValue="1024",
+				description="Minimum RAM per server") String minMemoryPerNode){
+		
+		envCommands.createEnvironment(in, out, environmentName, adminPassword, cloudId, numNodes,
+				location, architecture, isLoadBalanced, minCoresPerNode, 
+				minVolumeSizePerNode, minMemoryPerNode);
+	}
+	
+	@Command("delete-environment")
+	public void deleteEnvironment(@PipeIn String in, PipeOut out,
+			@Option(name="environmentId",required=true,description="Name or ID of the environment to be deleted",completer=EnvIdListCompleter.class) String environmentId){
+		envCommands.deleteEnvironment(in, out, environmentId);
+	}
+
+	@Command("stop-environment")
+	public void stopEnvironment(@PipeIn String in, PipeOut out,
+			@Option(name="environmentId",required=true,description="Name or ID of the environment to be stopped",completer=EnvIdListCompleter.class) String environmentId){
+		envCommands.stopEnvironment(in, out, environmentId);
+	}
+	
+	@Command("start-environment")
+	public void startEnvironment(@PipeIn String in, PipeOut out,
+			@Option(name="environmentId",required=true,description="Name or ID of the environment to be started",completer=EnvIdListCompleter.class) String environmentId){
+		envCommands.startEnvironment(in, out, environmentId);
+	}
+	
+	@Command("scale-up-environment")
+	public void scaleUpEnvironment(@PipeIn String in, PipeOut out,
+			@Option(name="environmentId",required=true,description="Name or ID of the environment to be scaled up",completer=EnvIdListCompleter.class) String environmentId,
+			@Option(name="num-servers",required=true,defaultValue="1",
+				description="Number of servers to start the environment with") String numNodes, 
+			@Option(name="min-cores-per-node",required=true,defaultValue="1",
+				description="Number of cores per server") String minCoresPerNode, 
+			@Option(name="min-volume-size-per-node",required=true,defaultValue="10", 
+				description="File system volume size in GB") String minVolumeSizePerNode, 
+			@Option(name="min-memory-per-node",required=true,defaultValue="1024",
+				description="Minimum RAM per server") String minMemoryPerNode){
+		envCommands.scaleUpEnvironment(in, out, environmentId, numNodes, minCoresPerNode, 
+			minVolumeSizePerNode, minMemoryPerNode);
+	}
+	
+	@Command("create-application")
+	public void createApplication(@PipeIn String in, PipeOut out, 
+			@Option(name="environmentId",required=true,description="Name or ID of the environment to be scaled up",completer=EnvIdListCompleter.class) String environmentId,
+			@Option(name="name",required=true,description="Application name") String appName,
+			@Option(name="version",required=true,description="Application version") String appVersion){
+		appCommands.createApplication(in,out,environmentId,appName,appVersion);
+	}
+	
+	@Command("list-applications")
+	public void listApplications(@PipeIn String in, PipeOut out){
+		appCommands.listApplications(in, out);
+	}
+	
+	@Command("stop-application")
+	public void stopApplication(@PipeIn String in, PipeOut out,
+			@Option(name="applicationId",required=true,description="Name or ID of the application to stop",completer=AppIdListCompleter.class) String appId){
+		appCommands.stopApplication(in, out, appId);
+	}
+	
+	@Command("start-application")
+	public void startApplication(@PipeIn String in, PipeOut out,
+			@Option(name="applicationId",required=true,description="Name or ID of the application to stop",completer=AppIdListCompleter.class) String appId){
+		appCommands.startApplication(in, out, appId);
+	}
+	
+	@Command("restart-application")
+	public void restartApplication(@PipeIn String in, PipeOut out,
+			@Option(name="applicationId",required=true,description="Name or ID of the application to restart",completer=AppIdListCompleter.class) String appId){
+		appCommands.restartApplication(in, out, appId);
+	}
+	
+	@Command("deploy")
+	public void deploy(@PipeIn String in, PipeOut out,
+			@Option(name="applicationId",required=true,description="Name or ID of the application to deploy",completer=AppIdListCompleter.class) String appId,
+			@Option(name="with-restart",required=false,defaultValue="false",flagOnly=true,description="Resatrt the application after deploying it") Boolean withRestart){
+		appCommands.deploy(in, out, appId);
+		if(withRestart)
+			shell.execute("rhc restart-application --applicationId " + appId);
+	}
+
+	
+	@Command("setup")
+	public void setup(){
+		if(ssoCookie == null)
+			shell.execute("rhc login");
+		
+		//check clouds
+		
+		//check environments
+		
+		//check applications
+		
+		//setup maven properties
+	}
+
+	protected String getSsoCookie() {
+		if(this.ssoCookie == null)
+			shell.execute("rhc login");
+		return ssoCookie;
+	}
+
+
+	protected String getFlexHost() {
+		return flexHost;
+	}
+
+	protected String getFlexContext() {
+		return flexContext;
+	}
+
+	public List<String> getSupportedCloudProviders() {
+		return this.supportedCloudProviders;
+	}
+
+	public List<String> getSupportedCloudRegions() {
+		return this.supportedCloudRegions;
+	}
+
+	public List<CloudAccount> getCachedCloudList() {
+		return this.cachedCloudList;
+	}
+	
+	public List<Environment> getCachedEnvironmentList() {
+		return this.cachedEnvironmentList;
+	}
+
+	public List<Application> getCachedApplicationList() {
+		return this.cachedApplicationList;
+	}
 }
