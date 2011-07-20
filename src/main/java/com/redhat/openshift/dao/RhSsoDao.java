@@ -64,7 +64,7 @@ public class RhSsoDao extends RestDao{
         
 		String ssoCookie = (String) cookieHeaders[0].getValue();
 		String cookieValue = ssoCookie.split(";")[0].split("=")[1];
-		System.out.println(cookieValue);
+		//System.out.println(cookieValue);
 		return cookieValue;
 	}
 }

@@ -25,14 +25,13 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpHost;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.protocol.HTTP;
 import org.apache.http.entity.mime.MultipartEntity;
 import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.entity.mime.content.StringBody;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.HTTP;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -73,7 +72,7 @@ public class ApplicationDao extends RestDao{
 		return applications;
 	}
 	
-	public void deleteApplication(HttpClient httpClient, Environment environment, Application app)
+	public void deleteApplication(Environment environment, Application app)
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException{
 		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
 		
@@ -115,7 +114,7 @@ public class ApplicationDao extends RestDao{
 		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
 		
 		Link link = app.getLinks().get("start");
-		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", /*link.getMethod()*/ "PUT", link.getHref());
+		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref());
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
         String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
@@ -137,8 +136,15 @@ public class ApplicationDao extends RestDao{
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException{
 		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
 		
-		Link link = app.getLinks().get("restart");
-		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", /*link.getMethod()*/ "POST", link.getHref());
+		Link link = null;
+		if(app.getLinks().containsKey("restart"))
+			link = app.getLinks().get("restart");
+		else if(app.getLinks().containsKey("start")){
+			startApplication(environment, app);
+			return;
+		}
+		
+		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", /*link.getMethod()*/ "PUT", link.getHref());
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
         String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));

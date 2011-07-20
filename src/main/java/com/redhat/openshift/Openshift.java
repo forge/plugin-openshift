@@ -17,6 +17,7 @@ package com.redhat.openshift;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -70,6 +71,7 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 	@Inject private CloudCommands cloudCommands;
 	@Inject private EnvironmentCommands envCommands;
 	@Inject private ApplicationCommands appCommands;
+	@Inject private SetupCommands setupCommands;
 	
 	private Properties rhcProperties;
 	private String ssoCookie;
@@ -81,6 +83,12 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 	protected List<Application> cachedApplicationList;
 	protected ArrayList<String> supportedCloudProviders;
 	protected ArrayList<String> supportedCloudRegions;
+
+    //Used for setup wizard
+	private String username;
+    private CloudAccount lastCloudCreated;
+    private Environment lastEnvironmentCreated;
+    private Application lastApplicationCreated;
 	
 	static{
 	}
@@ -108,7 +116,8 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 				try{
 					this.cachedApplicationList.addAll(applicationDao.listApplications(e));
 				}catch(Exception ex){
-					out.println(ShellColor.CYAN, "Unable to load application data for environment: " + e.getName());
+					//out.println(ShellColor.CYAN, "Unable to load application data for environment: " + e.getName());
+					//ignore
 				}
 			}
 		} catch (InternalClientException e) {
@@ -156,6 +165,16 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 		flexContext = flexUri.getPath() + "/rest";
 	}
 	
+	protected void saveRhcProperties(String key, String value){
+		try{
+			rhcProperties.setProperty(key, value);
+			rhcProperties.store(new FileOutputStream(new File( System.getProperty("user.home") + 
+					File.separator + ".openshift" + File.separator + "openshift.conf")), "Updated " + key);			
+		}catch(IOException e){
+			System.err.println("Unable to save configuration");
+		}
+	}
+	
 	@Command("login")
 	public void login(@PipeIn String in, PipeOut out,
 			@Option(name="login",required=false, description="Login name", shortName="l") String login,
@@ -183,7 +202,7 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 	
 	@Command("deregister-cloud")
 	public void deregisterClouds(@PipeIn String in, PipeOut out,
-			@Option(name="cloudId",required=true,description="Name or ID of the cloud account to be deleted") String cloudId){
+			@Option(name="cloudId",required=true,description="Name or ID of the cloud account to be deleted",completer=CloudIdListCompleter.class) String cloudId){
 		cloudCommands.deregisterClouds(in, out, cloudId);
 	}
 	
@@ -263,46 +282,44 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 		appCommands.listApplications(in, out);
 	}
 	
+	@Command("delete-application")
+	public void deleteApplication(@PipeIn String in, PipeOut out,
+			@Option(name="applicationId",required=false,description="Name or ID of the application to delete",completer=AppIdListCompleter.class) String appId){
+		appCommands.deleteApplication(in, out, appId);
+	}
+	
 	@Command("stop-application")
 	public void stopApplication(@PipeIn String in, PipeOut out,
-			@Option(name="applicationId",required=true,description="Name or ID of the application to stop",completer=AppIdListCompleter.class) String appId){
+			@Option(name="applicationId",required=false,description="Name or ID of the application to stop",completer=AppIdListCompleter.class) String appId){
 		appCommands.stopApplication(in, out, appId);
 	}
 	
 	@Command("start-application")
 	public void startApplication(@PipeIn String in, PipeOut out,
-			@Option(name="applicationId",required=true,description="Name or ID of the application to stop",completer=AppIdListCompleter.class) String appId){
+			@Option(name="applicationId",required=false,description="Name or ID of the application to stop",completer=AppIdListCompleter.class) String appId){
 		appCommands.startApplication(in, out, appId);
 	}
 	
 	@Command("restart-application")
 	public void restartApplication(@PipeIn String in, PipeOut out,
-			@Option(name="applicationId",required=true,description="Name or ID of the application to restart",completer=AppIdListCompleter.class) String appId){
+			@Option(name="applicationId",required=false,description="Name or ID of the application to restart",completer=AppIdListCompleter.class) String appId){
 		appCommands.restartApplication(in, out, appId);
 	}
 	
 	@Command("deploy")
 	public void deploy(@PipeIn String in, PipeOut out,
-			@Option(name="applicationId",required=true,description="Name or ID of the application to deploy",completer=AppIdListCompleter.class) String appId,
-			@Option(name="with-restart",required=false,defaultValue="false",flagOnly=true,description="Resatrt the application after deploying it") Boolean withRestart){
+			@Option(name="restart",required=false,defaultValue="false",flagOnly=true,description="Resatrt the application after deploying it") Boolean withRestart,
+			@Option(name="applicationId",required=false,description="Name or ID of the application to deploy",completer=AppIdListCompleter.class) String appId){
 		appCommands.deploy(in, out, appId);
-		if(withRestart)
+		if(withRestart){
 			shell.execute("rhc restart-application --applicationId " + appId);
+		}
 	}
 
 	
 	@Command("setup")
-	public void setup(){
-		if(ssoCookie == null)
-			shell.execute("rhc login");
-		
-		//check clouds
-		
-		//check environments
-		
-		//check applications
-		
-		//setup maven properties
+	public void setup(@PipeIn String in, PipeOut out){
+		setupCommands.setup(in,out,rhcProperties);
 	}
 
 	protected String getSsoCookie() {
@@ -338,5 +355,38 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 
 	public List<Application> getCachedApplicationList() {
 		return this.cachedApplicationList;
+	}
+
+	public void setLastCloudCreated(CloudAccount lastCloudCreated) {
+		this.lastCloudCreated = lastCloudCreated;
+	}
+
+	public CloudAccount getLastCloudCreated() {
+		return lastCloudCreated;
+	}
+
+	public void setLastEnvironmentCreated(Environment lastEnvironmentCreated) {
+		this.lastEnvironmentCreated = lastEnvironmentCreated;
+	}
+
+	public Environment getLastEnvironmentCreated() {
+		return lastEnvironmentCreated;
+	}
+
+	public void setLastApplicationCreated(Application lastApplicationCreated) {
+		this.lastApplicationCreated = lastApplicationCreated;
+		this.cachedApplicationList.add(lastApplicationCreated);
+	}
+
+	public Application getLastApplicationCreated() {
+		return lastApplicationCreated;
+	}
+
+	public void setUsername(String username) {
+		this.username = username;
+	}
+
+	public String getUsername() {
+		return username;
 	}
 }

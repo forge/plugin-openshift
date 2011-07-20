@@ -19,11 +19,14 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 
+import org.apache.maven.model.Model;
+import org.jboss.forge.maven.MavenCoreFacet;
 import org.jboss.forge.project.Project;
 import org.jboss.forge.project.facets.PackagingFacet;
 import org.jboss.forge.resources.FileResource;
@@ -94,6 +97,18 @@ public class ApplicationCommands {
 	public void stopApplication( String in, PipeOut out, String appId){
 		String ssoCookie = base.get().getSsoCookie();
 		
+		if(appId == null){
+			MavenCoreFacet maven = project.getFacet(MavenCoreFacet.class);
+			Model pom = maven.getPOM();
+			Properties props = pom.getProperties();
+			appId = props.getProperty("com.openshift.application");
+		}
+		
+		if(appId==null){
+			out.println(ShellColor.RED,"Please run 'rhc setup' or specify the application to deploy to using the '--applicationId' flag.");
+			return;
+		}
+		
 		try{
 			out.println("Retrieving list of environments...");
 			List<Environment> list = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
@@ -133,6 +148,18 @@ public class ApplicationCommands {
 	
 	public void startApplication( String in, PipeOut out, String appId){
 		String ssoCookie = base.get().getSsoCookie();
+		
+		if(appId == null){
+			MavenCoreFacet maven = project.getFacet(MavenCoreFacet.class);
+			Model pom = maven.getPOM();
+			Properties props = pom.getProperties();
+			appId = props.getProperty("com.openshift.application");
+		}
+		
+		if(appId==null){
+			out.println(ShellColor.RED,"Please run 'rhc setup' or specify the application to deploy to using the '--applicationId' flag.");
+			return;
+		}
 		
 		try{
 			out.println("Retrieving list of environments...");
@@ -174,6 +201,18 @@ public class ApplicationCommands {
 	public void restartApplication( String in, PipeOut out, String appId){
 		String ssoCookie = base.get().getSsoCookie();
 		
+		if(appId == null){
+			MavenCoreFacet maven = project.getFacet(MavenCoreFacet.class);
+			Model pom = maven.getPOM();
+			Properties props = pom.getProperties();
+			appId = props.getProperty("com.openshift.application");
+		}
+		
+		if(appId==null){
+			out.println(ShellColor.RED,"Please run 'rhc setup' or specify the application to deploy to using the '--applicationId' flag.");
+			return;
+		}
+		
 		try{
 			out.println("Retrieving list of environments...");
 			List<Environment> list = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
@@ -213,13 +252,28 @@ public class ApplicationCommands {
 	
 	public void deploy( String in, PipeOut out, String appId){
 		FileResource<?> finalArtifact = (FileResource<?>) project.getFacet(PackagingFacet.class).getFinalArtifact();
-		finalArtifact.exists();
+		if(!finalArtifact.exists()){
+			out.println(ShellColor.RED,"Please build your applciation first.");
+			return;
+		}
+
+		if(appId == null){
+			MavenCoreFacet maven = project.getFacet(MavenCoreFacet.class);
+			Model pom = maven.getPOM();
+			Properties props = pom.getProperties();
+			appId = props.getProperty("com.openshift.application");
+		}
+		
+		if(appId==null){
+			out.println(ShellColor.RED,"Please run 'rhc setup' or specify the application to deploy to using the '--applicationId' flag.");
+			return;
+		}
 		
 		String ssoCookie = base.get().getSsoCookie();
-		
 		try{
 			out.println("Retrieving list of environments...");
 			List<Environment> list = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
+			
 			List<Application> candidates = new ArrayList<Application>();
 			for (Environment environment : list) {
 				if(!environment.getClusterStatus().equalsIgnoreCase("UNRESPONSIVE") &&
@@ -245,7 +299,9 @@ public class ApplicationCommands {
 			}
 			
 			Application app = candidates.get(0);
+			out.print("Deploying " + finalArtifact.getName() + " to application " + app.getName() + " on environment " + app.getEnvironment().getName() + "...");
 			applicationDao.deployWar(app.getEnvironment(), app, finalArtifact.getUnderlyingResourceObject());
+			out.println(ShellColor.GREEN,"[OK]");
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");	
 		} catch (Exception e) {
@@ -301,7 +357,7 @@ public class ApplicationCommands {
 			
 			applicationDao.setCartridges(env,app,appCartridges);
 			out.println(ShellColor.GREEN, "[OK]");
-			
+			base.get().setLastApplicationCreated(app);
 			out.println(ShellColor.GREEN,"Applicaton created succesfully.");
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error.");
@@ -315,5 +371,57 @@ public class ApplicationCommands {
 			e.printStackTrace();
 		}
 		
+	}
+
+	public void deleteApplication(String in, PipeOut out, String appId) {
+		String ssoCookie = base.get().getSsoCookie();
+		
+		if(appId == null){
+			MavenCoreFacet maven = project.getFacet(MavenCoreFacet.class);
+			Model pom = maven.getPOM();
+			Properties props = pom.getProperties();
+			appId = props.getProperty("com.openshift.application");
+		}
+		
+		if(appId==null){
+			out.println(ShellColor.RED,"Please run 'rhc setup' or specify the application to deploy to using the '--applicationId' flag.");
+			return;
+		}
+		
+		try{
+			out.println("Retrieving list of environments...");
+			List<Environment> list = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
+			List<Application> candidates = new ArrayList<Application>();
+			for (Environment environment : list) {
+				if(!environment.getClusterStatus().equalsIgnoreCase("UNRESPONSIVE") &&
+						!environment.getClusterStatus().equalsIgnoreCase("STOPPED")){
+					List<Application> applications = applicationDao.listApplications(environment);
+					for (Application application : applications) {
+						if(application.getGuid().equals(appId) || application.getName().equals(appId)){
+							application.setEnvironment(environment);
+							candidates.add(application);
+						}
+					}
+				}
+			}
+			
+			if(candidates.size()>1){
+				out.println(ShellColor.RED,"Multiple applications share the name " + appId + ". Please provide the application GUID");
+				return;
+			}
+			
+			if(candidates.size()==0){
+				out.println(ShellColor.RED,"Can not find application identified by " + appId + ".");
+				return;
+			}
+			
+			Application app = candidates.get(0);
+			applicationDao.deleteApplication(app.getEnvironment(), app);
+		}catch (InternalClientException e) {
+			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");	
+		} catch (Exception e) {
+			e.printStackTrace();
+			out.println(ShellColor.RED,"Internal error. Do you have the latest openshift plugin?");
+		}
 	}
 }

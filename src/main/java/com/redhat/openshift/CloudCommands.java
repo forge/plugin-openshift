@@ -53,7 +53,10 @@ public class CloudCommands {
 		
 		CloudAccount cloudAccount=null;
 		try{
+			out.print("Creating cloud account...");
 			cloudAccount = cloudAccountDao.registerCloud(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext(), cloudName, cloudProvider, account, credentials, secretKey);
+			out.println(ShellColor.GREEN, "[OK]");
+			out.println();
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error while registering cloud account.");
 			e.printStackTrace();			
@@ -74,6 +77,7 @@ public class CloudCommands {
 				 new int[]{10,15,20},
 				 cloudAccount, 0, out);
 		}
+        base.get().setLastCloudCreated(cloudAccount);
 		base.get().updateCache(out);
 	}
 	

@@ -28,6 +28,7 @@ import javax.inject.Singleton;
 import org.jboss.forge.shell.ShellColor;
 import org.jboss.forge.shell.plugins.PipeOut;
 
+import com.redhat.openshift.dao.ApplicationDao;
 import com.redhat.openshift.dao.CloudAccountDao;
 import com.redhat.openshift.dao.EnvironmentDao;
 import com.redhat.openshift.dao.exceptions.ConnectionException;
@@ -49,6 +50,7 @@ public class EnvironmentCommands {
 	@Inject private EnvironmentDao environmentDao;
 	@Inject private Formatter formatter;
 	@Inject private CloudAccountDao cloudAccountDao;
+	@Inject private ApplicationDao applicationDao;
 
 	public void listEnvironments(String in, PipeOut out){
 		String ssoCookie = base.get().getSsoCookie();
@@ -131,11 +133,14 @@ public class EnvironmentCommands {
 		}
 		
 		CloudAccount cloudAccount = candidates.get(0);
+        Environment environment = null;
 		try{
-			out.println("Creating environment " + environmentName + "...");
-			Environment environment = environmentDao.createEnvironment(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext(), environmentName, adminPassword, 
+			out.print("Creating environment " + environmentName + "...");
+			environment = environmentDao.createEnvironment(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext(), environmentName, adminPassword, 
 					cloudAccount, location, architecture, numNodes, isLoadBalanced, minCoresPerNode, 
 					minVolumeSizePerNode, minMemoryPerNode);
+			out.println(ShellColor.GREEN,"[OK]");
+			out.println();
 			
 			formatter.printTable(new String[]{"Environment Id", "Name", "DNS", "Load Balanced?", "Location", "State"},
 					 new String[]{"Id","Name","Dns", "LoadBalanced", "Location", "ClusterStatus"},
@@ -146,7 +151,31 @@ public class EnvironmentCommands {
 		} catch (Exception e) {
 			out.println(ShellColor.RED,"Internal error. Do you have the latest openshift plugin?");
 		}
+		
+		try{
+			out.print("Waiting for DNS to propogate...");
+			for(int i=0;i<10;i++){
+				boolean pollOk = false;
+				try{
+					applicationDao.listApplications(environment);
+					pollOk = true;
+				}catch(Exception e){
+					//ignore
+				}
+				if(pollOk)
+					break;
+				else{
+					Thread.sleep(5000);
+					out.print("...");
+				}
+			}
+		}catch(Exception e){
+			//ignore
+		}
+		out.println(".");
+		
 		base.get().updateCache(out);
+        base.get().setLastEnvironmentCreated(environment);
 	}
 	
 	public void deleteEnvironment(String in, PipeOut out, String environmentId){

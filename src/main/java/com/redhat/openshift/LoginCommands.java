@@ -18,6 +18,7 @@ package com.redhat.openshift;
 import java.util.Properties;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 import javax.inject.Singleton;
 
 import org.jboss.forge.shell.ShellColor;
@@ -35,6 +36,7 @@ import com.redhat.openshift.dao.exceptions.InvalidCredentialsException;
  */
 @Singleton
 public class LoginCommands {
+	@Inject private Provider<Openshift> base;	
 	@Inject private RhSsoDao ssoDao;
 
 	public String login(String in, PipeOut out, Properties rhcProperties, ShellPrompt prompt, String login, String password){
@@ -63,6 +65,7 @@ public class LoginCommands {
 		try{
 			String ssoCookie = ssoDao.login(login, password);
 			out.println(ShellColor.GREEN,"Logged in succesfully");
+			base.get().setUsername(login);
 			return ssoCookie;
 		}catch(InvalidCredentialsException e){
 			out.println(ShellColor.RED,"Invalid credentials");

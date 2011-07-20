@@ -118,7 +118,7 @@ public abstract class RestDao {
 			throws InternalClientException, ConnectionException, InvalidCredentialsException, OperationFailedException{
 		HttpResponse response;
 		try {
-			System.err.println("URI:" + targetHost + method.getURI());
+			//System.err.println("URI:" + targetHost + method.getURI());
 			response = httpClient.execute(targetHost,method);
 		} catch (ClientProtocolException e) {
 			throw new InternalClientException(e);
@@ -137,7 +137,7 @@ public abstract class RestDao {
 		if( entity == null )
 			return null;
 		
-		System.err.println("Http code:" + code);
+		//System.err.println("Http code:" + code);
 		
 		try {
 			in = new InputStreamReader(entity.getContent());
