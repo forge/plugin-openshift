@@ -61,9 +61,10 @@ public class LoginCommands {
 			password = prompt.prompt("Password");
 		}
 		
+		String loginServer = rhcProperties.getProperty("login_server", "https://www.redhat.com");
 		out.print(ShellColor.BOLD, "Logging into Openshift Flex as " + login + "\n");
 		try{
-			String ssoCookie = ssoDao.login(login, password);
+			String ssoCookie = ssoDao.login(loginServer,login, password);
 			out.println(ShellColor.GREEN,"Logged in succesfully");
 			base.get().setUsername(login);
 			return ssoCookie;

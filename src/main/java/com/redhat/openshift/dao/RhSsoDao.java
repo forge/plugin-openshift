@@ -39,10 +39,10 @@ import com.redhat.openshift.dao.exceptions.InvalidCredentialsException;
  *  
  */
 public class RhSsoDao extends RestDao{
-	public String login(String login, String password) throws InternalClientException, InvalidCredentialsException, ConnectionException {
+	public String login(String loginServer, String login, String password) throws InternalClientException, InvalidCredentialsException, ConnectionException {
 		HttpClient httpClient = this.getHttpClient();
 		
-		HttpPost httppost = new HttpPost("https://www.redhat.com/wapps/streamline/login.html");
+		HttpPost httppost = new HttpPost(loginServer+"/wapps/streamline/login.html");
 		List <NameValuePair> nvps = new ArrayList<NameValuePair>();
         nvps.add(new BasicNameValuePair("login", login));
         nvps.add(new BasicNameValuePair("password", password));

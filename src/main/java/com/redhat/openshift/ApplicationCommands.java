@@ -112,33 +112,9 @@ public class ApplicationCommands {
 		}
 		
 		try{
-			out.println("Retrieving list of environments...");
-			List<Environment> list = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
-			List<Application> candidates = new ArrayList<Application>();
-			for (Environment environment : list) {
-				if(!environment.getClusterStatus().equalsIgnoreCase("UNRESPONSIVE") &&
-						!environment.getClusterStatus().equalsIgnoreCase("STOPPED")){
-					List<Application> applications = applicationDao.listApplications(environment);
-					for (Application application : applications) {
-						if(application.getGuid().equals(appId) || application.getName().equals(appId)){
-							application.setEnvironment(environment);
-							candidates.add(application);
-						}
-					}
-				}
-			}
-			
-			if(candidates.size()>1){
-				out.println(ShellColor.RED,"Multiple applications share the name " + appId + ". Please provide the application GUID");
+			Application app = findApplication(in,out,ssoCookie,appId);
+			if(app == null)
 				return;
-			}
-			
-			if(candidates.size()==0){
-				out.println(ShellColor.RED,"Can not find application identified by " + appId + ".");
-				return;
-			}
-			
-			Application app = candidates.get(0);
 			applicationDao.stopApplication(app.getEnvironment(), app);
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");	
@@ -164,33 +140,9 @@ public class ApplicationCommands {
 		}
 		
 		try{
-			out.println("Retrieving list of environments...");
-			List<Environment> list = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
-			List<Application> candidates = new ArrayList<Application>();
-			for (Environment environment : list) {
-				if(!environment.getClusterStatus().equalsIgnoreCase("UNRESPONSIVE") &&
-						!environment.getClusterStatus().equalsIgnoreCase("STOPPED")){
-					List<Application> applications = applicationDao.listApplications(environment);
-					for (Application application : applications) {
-						if(application.getGuid().equals(appId) || application.getName().equals(appId)){
-							application.setEnvironment(environment);
-							candidates.add(application);
-						}
-					}
-				}
-			}
-			
-			if(candidates.size()>1){
-				out.println(ShellColor.RED,"Multiple applications share the name " + appId + ". Please provide the application GUID");
+			Application app = findApplication(in,out,ssoCookie,appId);
+			if(app == null)
 				return;
-			}
-			
-			if(candidates.size()==0){
-				out.println(ShellColor.RED,"Can not find application identified by " + appId + ".");
-				return;
-			}
-			
-			Application app = candidates.get(0);
 			applicationDao.startApplication(app.getEnvironment(), app);
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");	
@@ -216,33 +168,9 @@ public class ApplicationCommands {
 		}
 		
 		try{
-			out.println("Retrieving list of environments...");
-			List<Environment> list = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
-			List<Application> candidates = new ArrayList<Application>();
-			for (Environment environment : list) {
-				if(!environment.getClusterStatus().equalsIgnoreCase("UNRESPONSIVE") &&
-						!environment.getClusterStatus().equalsIgnoreCase("STOPPED")){
-					List<Application> applications = applicationDao.listApplications(environment);
-					for (Application application : applications) {
-						if(application.getGuid().equals(appId) || application.getName().equals(appId)){
-							application.setEnvironment(environment);
-							candidates.add(application);
-						}
-					}
-				}
-			}
-			
-			if(candidates.size()>1){
-				out.println(ShellColor.RED,"Multiple applications share the name " + appId + ". Please provide the application GUID");
+			Application app = findApplication(in,out,ssoCookie,appId);
+			if(app == null)
 				return;
-			}
-			
-			if(candidates.size()==0){
-				out.println(ShellColor.RED,"Can not find application identified by " + appId + ".");
-				return;
-			}
-			
-			Application app = candidates.get(0);
 			applicationDao.restartApplication(app.getEnvironment(), app);
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");	
@@ -273,34 +201,9 @@ public class ApplicationCommands {
 		
 		String ssoCookie = base.get().getSsoCookie();
 		try{
-			out.println("Retrieving list of environments...");
-			List<Environment> list = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
-			
-			List<Application> candidates = new ArrayList<Application>();
-			for (Environment environment : list) {
-				if(!environment.getClusterStatus().equalsIgnoreCase("UNRESPONSIVE") &&
-						!environment.getClusterStatus().equalsIgnoreCase("STOPPED")){
-					List<Application> applications = applicationDao.listApplications(environment);
-					for (Application application : applications) {
-						if(application.getGuid().equals(appId) || application.getName().equals(appId)){
-							application.setEnvironment(environment);
-							candidates.add(application);
-						}
-					}
-				}
-			}
-			
-			if(candidates.size()>1){
-				out.println(ShellColor.RED,"Multiple applications share the name " + appId + ". Please provide the application GUID");
+			Application app = findApplication(in,out,ssoCookie,appId);
+			if(app == null)
 				return;
-			}
-			
-			if(candidates.size()==0){
-				out.println(ShellColor.RED,"Can not find application identified by " + appId + ".");
-				return;
-			}
-			
-			Application app = candidates.get(0);
 			out.print("Deploying " + finalArtifact.getName() + " to application " + app.getName() + " on environment " + app.getEnvironment().getName() + "...");
 			applicationDao.deployWar(app.getEnvironment(), app, finalArtifact.getUnderlyingResourceObject());
 			out.println(ShellColor.GREEN,"[OK]");
@@ -394,33 +297,9 @@ public class ApplicationCommands {
 		}
 		
 		try{
-			out.println("Retrieving list of environments...");
-			List<Environment> list = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
-			List<Application> candidates = new ArrayList<Application>();
-			for (Environment environment : list) {
-				if(!environment.getClusterStatus().equalsIgnoreCase("UNRESPONSIVE") &&
-						!environment.getClusterStatus().equalsIgnoreCase("STOPPED")){
-					List<Application> applications = applicationDao.listApplications(environment);
-					for (Application application : applications) {
-						if(application.getGuid().equals(appId) || application.getName().equals(appId)){
-							application.setEnvironment(environment);
-							candidates.add(application);
-						}
-					}
-				}
-			}
-			
-			if(candidates.size()>1){
-				out.println(ShellColor.RED,"Multiple applications share the name " + appId + ". Please provide the application GUID");
+			Application app = findApplication(in,out,ssoCookie,appId);
+			if(app == null)
 				return;
-			}
-			
-			if(candidates.size()==0){
-				out.println(ShellColor.RED,"Can not find application identified by " + appId + ".");
-				return;
-			}
-			
-			Application app = candidates.get(0);
 			applicationDao.deleteApplication(app.getEnvironment(), app);
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");	
@@ -428,5 +307,35 @@ public class ApplicationCommands {
 			e.printStackTrace();
 			out.println(ShellColor.RED,"Internal error. Do you have the latest openshift plugin?");
 		}
+	}
+
+	private Application findApplication(String in, PipeOut out, String ssoCookie, String appId) 
+			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException {
+		out.println("Retrieving list of environments...");
+		List<Environment> list = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
+		List<Application> candidates = new ArrayList<Application>();
+		for (Environment environment : list) {
+			if(!environment.getClusterStatus().equalsIgnoreCase("UNRESPONSIVE") &&
+					!environment.getClusterStatus().equalsIgnoreCase("STOPPED")){
+				List<Application> applications = applicationDao.listApplications(environment);
+				for (Application application : applications) {
+					if(application.getGuid().equals(appId) || application.getName().equals(appId)){
+						application.setEnvironment(environment);
+						candidates.add(application);
+					}
+				}
+			}
+		}
+		
+		if(candidates.size()>1){
+			out.println(ShellColor.RED,"Multiple applications share the name " + appId + ". Please provide the application GUID");
+			return null;
+		}
+		
+		if(candidates.size()==0){
+			out.println(ShellColor.RED,"Can not find application identified by " + appId + ".");
+			return null;
+		}
+		return candidates.get(0);
 	}
 }

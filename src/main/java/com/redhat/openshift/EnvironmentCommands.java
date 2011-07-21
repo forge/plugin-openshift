@@ -182,23 +182,9 @@ public class EnvironmentCommands {
 		String ssoCookie = base.get().getSsoCookie();
 		
 		try{
-			out.println("Retrieving list of environments...");
-			List<Environment> environmentList = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
-			List<Environment> candidates = new ArrayList<Environment>();
-			for (Environment env : environmentList) {
-				if( env.getName().equals(environmentId) || Long.toString(env.getId()).equals(environmentId.trim()) ){
-					candidates.add(env);
-				}
-			}
-			if(candidates.size()>1){
-				out.println(ShellColor.RED,"Multiple environments share the name " + environmentId + ". Please provide the environment ID");
+			Environment env = findEnvironment(in,out,ssoCookie,environmentId);
+			if(env == null)
 				return;
-			}
-			if(candidates.size()==0){
-				out.println(ShellColor.RED,"Can not find environment identified by" + environmentId + ".");
-				return;
-			}
-			Environment env = candidates.get(0);
 			
 			out.println("Deleting environment " + env.getName() + "...");
 			environmentDao.deleteEnvironment(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext(), env);
@@ -224,23 +210,9 @@ public class EnvironmentCommands {
 		String ssoCookie = base.get().getSsoCookie();
 		
 		try{
-			out.println("Retrieving list of environments...");
-			List<Environment> environmentList = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
-			List<Environment> candidates = new ArrayList<Environment>();
-			for (Environment env : environmentList) {
-				if( env.getName().equals(environmentId) || Long.toString(env.getId()).equals(environmentId.trim()) ){
-					candidates.add(env);
-				}
-			}
-			if(candidates.size()>1){
-				out.println(ShellColor.RED,"Multiple environments share the name " + environmentId + ". Please provide the environment ID");
+			Environment env = findEnvironment(in,out,ssoCookie,environmentId);
+			if(env == null)
 				return;
-			}
-			if(candidates.size()==0){
-				out.println(ShellColor.RED,"Can not find environment identified by" + environmentId + ".");
-				return;
-			}
-			Environment env = candidates.get(0);
 			
 			out.println("Stopping environment " + env.getName() + "...");
 			environmentDao.stopEnvironment(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext(), env);
@@ -262,23 +234,9 @@ public class EnvironmentCommands {
 		String ssoCookie = base.get().getSsoCookie();
 		
 		try{
-			out.println("Retrieving list of environments...");
-			List<Environment> environmentList = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
-			List<Environment> candidates = new ArrayList<Environment>();
-			for (Environment env : environmentList) {
-				if( env.getName().equals(environmentId) || Long.toString(env.getId()).equals(environmentId.trim()) ){
-					candidates.add(env);
-				}
-			}
-			if(candidates.size()>1){
-				out.println(ShellColor.RED,"Multiple environments share the name " + environmentId + ". Please provide the environment ID");
+			Environment env = findEnvironment(in,out,ssoCookie,environmentId);
+			if(env == null)
 				return;
-			}
-			if(candidates.size()==0){
-				out.println(ShellColor.RED,"Can not find environment identified by" + environmentId + ".");
-				return;
-			}
-			Environment env = candidates.get(0);
 			
 			out.println("Starting environment " + env.getName() + "...");
 			environmentDao.startEnvironment(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext(), env);
@@ -302,23 +260,9 @@ public class EnvironmentCommands {
 		String ssoCookie = base.get().getSsoCookie();
 		
 		try{
-			out.println("Retrieving list of environments...");
-			List<Environment> environmentList = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
-			List<Environment> candidates = new ArrayList<Environment>();
-			for (Environment env : environmentList) {
-				if( env.getName().equals(environmentId) || Long.toString(env.getId()).equals(environmentId.trim()) ){
-					candidates.add(env);
-				}
-			}
-			if(candidates.size()>1){
-				out.println(ShellColor.RED,"Multiple environments share the name " + environmentId + ". Please provide the environment ID");
+			Environment env = findEnvironment(in,out,ssoCookie,environmentId);
+			if(env == null)
 				return;
-			}
-			if(candidates.size()==0){
-				out.println(ShellColor.RED,"Can not find environment identified by" + environmentId + ".");
-				return;
-			}
-			Environment env = candidates.get(0);
 			
 			out.println("Scaling up environment " + env.getName() + " by " + numNodes + " servers...");
 			environmentDao.scaleUp(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext(), env, numNodes, minCoresPerNode, minVolumeSizePerNode, minMemoryPerNode);
@@ -334,5 +278,26 @@ public class EnvironmentCommands {
 			out.println(ShellColor.RED,"Invalid credentials");
 			e.printStackTrace();
 		}
+	}
+
+	private Environment findEnvironment(String in, PipeOut out, String ssoCookie, String environmentId) 
+			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException {
+		out.println("Retrieving list of environments...");
+		List<Environment> environmentList = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
+		List<Environment> candidates = new ArrayList<Environment>();
+		for (Environment env : environmentList) {
+			if( env.getName().equals(environmentId) || Long.toString(env.getId()).equals(environmentId.trim()) ){
+				candidates.add(env);
+			}
+		}
+		if(candidates.size()>1){
+			out.println(ShellColor.RED,"Multiple environments share the name " + environmentId + ". Please provide the environment ID");
+			return null;
+		}
+		if(candidates.size()==0){
+			out.println(ShellColor.RED,"Can not find environment identified by" + environmentId + ".");
+		 	return null;
+		}
+		return candidates.get(0);
 	}
 }

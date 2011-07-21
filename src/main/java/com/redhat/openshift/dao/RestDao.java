@@ -58,6 +58,7 @@ import com.redhat.openshift.model.ResponseObject;
  * @author <a href="mailto:kraman+forge@gmail.com">Krishna Raman</a>
  *  
  */
+@SuppressWarnings("deprecation")
 public abstract class RestDao {
 	
 	protected DefaultHttpClient getHttpClient() throws ConnectionException{
