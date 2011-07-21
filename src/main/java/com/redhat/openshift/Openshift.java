@@ -310,12 +310,8 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 	public void deploy(@PipeIn String in, PipeOut out,
 			@Option(name="restart",required=false,defaultValue="false",flagOnly=true,description="Resatrt the application after deploying it") Boolean withRestart,
 			@Option(name="applicationId",required=false,description="Name or ID of the application to deploy",completer=AppIdListCompleter.class) String appId){
-		appCommands.deploy(in, out, appId);
-		if(withRestart){
-			shell.execute("rhc restart-application --applicationId " + appId);
-		}
+		appCommands.deploy(in, out, appId, withRestart);
 	}
-
 	
 	@Command("setup")
 	public void setup(@PipeIn String in, PipeOut out){

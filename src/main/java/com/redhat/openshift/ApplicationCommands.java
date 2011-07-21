@@ -30,6 +30,7 @@ import org.jboss.forge.maven.MavenCoreFacet;
 import org.jboss.forge.project.Project;
 import org.jboss.forge.project.facets.PackagingFacet;
 import org.jboss.forge.resources.FileResource;
+import org.jboss.forge.shell.Shell;
 import org.jboss.forge.shell.ShellColor;
 import org.jboss.forge.shell.plugins.PipeOut;
 
@@ -56,6 +57,7 @@ public class ApplicationCommands {
 	@Inject private Formatter formatter;
 	@Inject private EnvironmentDao environmentDao;
 	@Inject private ApplicationDao applicationDao;
+	@Inject private Shell shell;
 
 	public void listApplications(String in, PipeOut out){
 		String ssoCookie = base.get().getSsoCookie();
@@ -250,7 +252,7 @@ public class ApplicationCommands {
 		}
 	}
 	
-	public void deploy( String in, PipeOut out, String appId){
+	public void deploy( String in, PipeOut out, String appId, Boolean withRestart){
 		FileResource<?> finalArtifact = (FileResource<?>) project.getFacet(PackagingFacet.class).getFinalArtifact();
 		if(!finalArtifact.exists()){
 			out.println(ShellColor.RED,"Please build your applciation first.");
@@ -302,6 +304,9 @@ public class ApplicationCommands {
 			out.print("Deploying " + finalArtifact.getName() + " to application " + app.getName() + " on environment " + app.getEnvironment().getName() + "...");
 			applicationDao.deployWar(app.getEnvironment(), app, finalArtifact.getUnderlyingResourceObject());
 			out.println(ShellColor.GREEN,"[OK]");
+			if(withRestart){
+				shell.execute("rhc restart-application --applicationId " + app.getGuid());
+			}
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");	
 		} catch (Exception e) {

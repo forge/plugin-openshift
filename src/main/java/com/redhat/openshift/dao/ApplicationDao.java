@@ -60,7 +60,7 @@ public class ApplicationDao extends RestDao{
         method.addHeader("Authorization", "Basic "+ usernameAndPasswordEncoded);
 		ResponseObject response = doHttp(getHttpClient(), targetHost, method, 200);
 		
-		Link link = response.getLinks().get("applications");
+		Link link = response.getLinks().get("list-applications");
 		method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref());
 		method.addHeader("Authorization", "Basic "+ usernameAndPasswordEncoded);
 		
@@ -91,7 +91,7 @@ public class ApplicationDao extends RestDao{
 		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
 		
 		Link link = app.getLinks().get("stop");
-		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", /*link.getMethod()*/ "PUT", link.getHref());
+		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref());
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
         String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
@@ -144,14 +144,14 @@ public class ApplicationDao extends RestDao{
 			return;
 		}
 		
-		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", /*link.getMethod()*/ "PUT", link.getHref());
+		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref());
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
         String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
         method.addHeader("Authorization", "Basic "+ usernameAndPasswordEncoded);
         
         List <NameValuePair> nvps = new ArrayList<NameValuePair>();
-		nvps.add(new BasicNameValuePair("state", "restart"));
+		nvps.add(new BasicNameValuePair("operation", "restart"));
         
         try {
 			((HttpEntityEnclosingRequest)method).setEntity(new UrlEncodedFormEntity(nvps, HTTP.UTF_8));
@@ -199,12 +199,15 @@ public class ApplicationDao extends RestDao{
 	public Application createApplication(Environment environment, String appName, String appVersion) 
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException {
 		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
-		
-		Link link = new Link("POST","/applications");
-		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref());
+		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", "GET", "/api");
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
         String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
+        method.addHeader("Authorization", "Basic "+ usernameAndPasswordEncoded);
+		ResponseObject response = doHttp(getHttpClient(), targetHost, method, 200);
+		
+		Link link = response.getLinks().get("create-application");
+		method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref());
         method.addHeader("Authorization", "Basic "+ usernameAndPasswordEncoded);
         
         List <NameValuePair> nvps = new ArrayList<NameValuePair>();
@@ -217,19 +220,24 @@ public class ApplicationDao extends RestDao{
 			throw new InternalClientException(e);
 		}
         
-		ResponseObject response = doHttp(getHttpClient(), targetHost, method, 201);
+		response = doHttp(getHttpClient(), targetHost, method, 201);
 		return response.getApplication();
 	}
 
 	public List<Cartridge> getAvailableCartridges(Environment environment) 
 			throws InternalClientException, ConnectionException, InvalidCredentialsException, OperationFailedException {
 		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
-		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", "GET", "/cartridges");
+		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", "GET", "/api");
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
         String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
         method.addHeader("Authorization", "Basic "+ usernameAndPasswordEncoded);
 		ResponseObject response = doHttp(getHttpClient(), targetHost, method, 200);
+		
+		Link link = response.getLinks().get("list-cartridges");
+		method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref());
+        method.addHeader("Authorization", "Basic "+ usernameAndPasswordEncoded);
+		response = doHttp(getHttpClient(), targetHost, method, 200);
 		
 		return response.getCartridges();
 	}
@@ -237,10 +245,12 @@ public class ApplicationDao extends RestDao{
 	public List<Cartridge> getCartridges(Environment environment, Application app) 
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException {
 		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
-		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", "GET", "/applications/" + app.getGuid() + "/cartridges");
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
         String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
+		
+		Link link = app.getLinks().get("list-cartridges");
+		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref()); 
         method.addHeader("Authorization", "Basic "+ usernameAndPasswordEncoded);
 		ResponseObject response = doHttp(getHttpClient(), targetHost, method, 200);
 		
@@ -250,11 +260,14 @@ public class ApplicationDao extends RestDao{
 	public void setCartridges(Environment environment, Application app, List<Cartridge> cartridges) 
 			throws InternalClientException, ConnectionException, InvalidCredentialsException, OperationFailedException {
 		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
-		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", "PUT", "/applications/" + app.getGuid() + "/cartridges");
-		String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
-		String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
 
-		//Update control file and install new cartridges
+        String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
+        String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
+		
+        //Update control file and install new cartridges
+		Link link = app.getLinks().get("update-cartridges");
+		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref()); 
+
 		Gson gson = new GsonBuilder().serializeNulls().create();
 		List <NameValuePair> nvps = new ArrayList<NameValuePair>();
 		nvps.add(new BasicNameValuePair("cartridges", gson.toJson(cartridges)));
@@ -267,13 +280,11 @@ public class ApplicationDao extends RestDao{
 		@SuppressWarnings("unused")
 		ResponseObject response = doHttp(getHttpClient(), targetHost, method, 200);
 		
-		//Generate default configuration for cartridges
-		method = super.getHttpMethod(getHttpClient(), "", "GET", "/applications/" + app.getGuid() + "/configurators");
-		method.addHeader("Authorization", "Basic "+ usernameAndPasswordEncoded);
-		response = doHttp(getHttpClient(), targetHost, method, 200);
-		
 		//Commit configuration
-		method = super.getHttpMethod(getHttpClient(), "", "POST", "/applications/" + app.getGuid() + "/tree/.vostok/revisions");
+		link = app.getLinks().get("files");
+		//TODO: Hardcoded
+		link.setMethod("POST");
+		method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref() + "/.vostok/revisions");
 		method.addHeader("Authorization", "Basic "+ usernameAndPasswordEncoded);
 		nvps = new ArrayList<NameValuePair>();
 		nvps.add(new BasicNameValuePair("untracked", "true"));
