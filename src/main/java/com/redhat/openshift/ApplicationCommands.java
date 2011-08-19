@@ -40,6 +40,7 @@ import com.redhat.openshift.dao.exceptions.ConnectionException;
 import com.redhat.openshift.dao.exceptions.InternalClientException;
 import com.redhat.openshift.dao.exceptions.InvalidCredentialsException;
 import com.redhat.openshift.dao.exceptions.OperationFailedException;
+import com.redhat.openshift.dao.exceptions.UnsupportedEnvironmentVersionException;
 import com.redhat.openshift.model.Application;
 import com.redhat.openshift.model.Cartridge;
 import com.redhat.openshift.model.Environment;
@@ -72,15 +73,21 @@ public class ApplicationCommands {
 							 new String[]{"Id","Name","Dns", "LoadBalanced", "Location", "ClusterStatus"},
 							 new int[]{16,15,40,20,15,10},
 							 environment, 0, out);
-					List<Application> applications = applicationDao.listApplications(environment);
-					if(applications.size() > 0){
-						out.println("    Applications:");
-						formatter.printTable(new String[]{"GUID","Name", "Version", "State"},
-							 new String[]{"Guid","Name","Version", "Status"},
-							 new int[]{40,15,20,25},
-							 applications, 1, out);
-					}else{
-						out.println("    No Application for this environment");						
+					try{
+						List<Application> applications = applicationDao.listApplications(environment);
+						if(applications.size() > 0){
+							out.println("    Applications:");
+							formatter.printTable(new String[]{"GUID","Name", "Version", "State"},
+								 new String[]{"Guid","Name","Version", "Status"},
+								 new int[]{40,15,20,25},
+								 applications, 1, out);
+						}else{
+							out.println("    No Application for this environment");						
+						}
+					}catch(UnsupportedEnvironmentVersionException e){
+						out.println(ShellColor.RED,"Environment " + environment.getName() + " is running on an older version of the base system and cannot be accessed using this plugin");
+					} catch (ConnectionException e){
+						out.println(ShellColor.RED,"Unable to connect to environment " + environment.getName() + ". Connection timeout occured");
 					}
 				}
 			}
@@ -89,9 +96,8 @@ public class ApplicationCommands {
 		}  catch (KeyManagementException e) {
 			out.println(ShellColor.RED,"Error initlizing HTTPS.");
 		} catch (NoSuchAlgorithmException e) {
-			out.println(ShellColor.RED,"Error initlizing HTTPS.");		
+			out.println(ShellColor.RED,"Error initlizing HTTPS.");
 		} catch (Exception e) {
-			e.printStackTrace();
 			out.println(ShellColor.RED,"Internal error. Do you have the latest openshift plugin?");
 		}
 	}
@@ -115,6 +121,12 @@ public class ApplicationCommands {
 			Application app = findApplication(in,out,ssoCookie,appId);
 			if(app == null)
 				return;
+			
+			if(app.getStatus().equals("CREATED")){
+				out.println(ShellColor.RED,"Please run 'rhc deploy' to deploy a war/ear file before attempting to stop the application");
+				return;
+			}
+			
 			applicationDao.stopApplication(app.getEnvironment(), app);
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");	
@@ -141,8 +153,15 @@ public class ApplicationCommands {
 		
 		try{
 			Application app = findApplication(in,out,ssoCookie,appId);
+			
 			if(app == null)
 				return;
+			
+			if(app.getStatus().equals("CREATED")){
+				out.println(ShellColor.RED,"Please run 'rhc deploy' to deploy a war/ear file before attempting to start the application");
+				return;
+			}
+				
 			applicationDao.startApplication(app.getEnvironment(), app);
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");	
@@ -171,6 +190,12 @@ public class ApplicationCommands {
 			Application app = findApplication(in,out,ssoCookie,appId);
 			if(app == null)
 				return;
+			
+			if(app.getStatus().equals("CREATED")){
+				out.println(ShellColor.RED,"Please run 'rhc deploy' to deploy a war/ear file before attempting to start the application");
+				return;
+			}
+			
 			applicationDao.restartApplication(app.getEnvironment(), app);
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");	
@@ -313,16 +338,23 @@ public class ApplicationCommands {
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException {
 		out.println("Retrieving list of environments...");
 		List<Environment> list = environmentDao.listEnvironments(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext());
+		
 		List<Application> candidates = new ArrayList<Application>();
 		for (Environment environment : list) {
 			if(!environment.getClusterStatus().equalsIgnoreCase("UNRESPONSIVE") &&
 					!environment.getClusterStatus().equalsIgnoreCase("STOPPED")){
-				List<Application> applications = applicationDao.listApplications(environment);
-				for (Application application : applications) {
-					if(application.getGuid().equals(appId) || application.getName().equals(appId)){
-						application.setEnvironment(environment);
-						candidates.add(application);
+				try{
+					List<Application> applications = applicationDao.listApplications(environment);
+					for (Application application : applications) {
+						if(application.getGuid().equals(appId) || application.getName().equals(appId)){
+							application.setEnvironment(environment);
+							candidates.add(application);
+						}
 					}
+				}catch(UnsupportedEnvironmentVersionException e){
+					//ignore
+				}catch(ConnectionException e){
+					//ignore
 				}
 			}
 		}

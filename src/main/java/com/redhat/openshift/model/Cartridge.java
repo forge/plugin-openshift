@@ -30,7 +30,9 @@ public class Cartridge {
 	private String description;
 	private String version;
 	private String build;
+	private String filename;
 	private String architecture;
+	private String predicate;
 	private Boolean isAvailable;
 	private ArrayList<Feature> provides;
 	private ArrayList<Feature> requires;
@@ -108,5 +110,17 @@ public class Cartridge {
 	}
 	public ArrayList<ArrayList<Feature>> getConflicts() {
 		return conflicts;
+	}
+	public String getFilename() {
+		return filename;
+	}
+	public void setFilename(String filename) {
+		this.filename = filename;
+	}
+	public String getPredicate() {
+		return predicate;
+	}
+	public void setPredicate(String predicate) {
+		this.predicate = predicate;
 	}
 }

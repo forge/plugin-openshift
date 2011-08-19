@@ -100,6 +100,9 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 	}
 	
 	synchronized protected void updateCache(PipeOut out){
+		if(ssoCookie == null)
+			return;
+		
 		cachedApplicationList = new ArrayList<Application>();
 		cachedCloudList = new ArrayList<CloudAccount>();
 		cachedEnvironmentList = new ArrayList<Environment>();

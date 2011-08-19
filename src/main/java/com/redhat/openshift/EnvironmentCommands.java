@@ -148,8 +148,10 @@ public class EnvironmentCommands {
 					 environment, 0, out);
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");
+			return;
 		} catch (Exception e) {
 			out.println(ShellColor.RED,"Internal error. Do you have the latest openshift plugin?");
+			return;
 		}
 		
 		try{
@@ -190,7 +192,7 @@ public class EnvironmentCommands {
 			environmentDao.deleteEnvironment(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext(), env);
 			out.println(ShellColor.GREEN,"Environment deleted succesfully.");
 		}catch (InternalClientException e) {
-			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");
+			out.println(ShellColor.RED,"Encountered an unexpected error while trying to delete environment.");
 			e.printStackTrace();
 		}catch (OperationFailedException e ){
 			out.println(ShellColor.RED,"Unable to delete environment" + environmentId + ".");
@@ -213,6 +215,11 @@ public class EnvironmentCommands {
 			Environment env = findEnvironment(in,out,ssoCookie,environmentId);
 			if(env == null)
 				return;
+			
+			if( !env.getClusterStatus().equals("STARTED") ){
+				out.println("Environment is currently in " + env.getClusterStatus() + "state and cannot be stopped");
+				return;
+			}
 			
 			out.println("Stopping environment " + env.getName() + "...");
 			environmentDao.stopEnvironment(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext(), env);
@@ -237,6 +244,11 @@ public class EnvironmentCommands {
 			Environment env = findEnvironment(in,out,ssoCookie,environmentId);
 			if(env == null)
 				return;
+			
+			if( !env.getClusterStatus().equals("STOPPED") ){
+				out.println("Environment is currently in " + env.getClusterStatus() + "state and cannot be started");
+				return;
+			}
 			
 			out.println("Starting environment " + env.getName() + "...");
 			environmentDao.startEnvironment(ssoCookie, base.get().getFlexHost(), base.get().getFlexContext(), env);

@@ -22,6 +22,7 @@ import com.redhat.openshift.dao.exceptions.ConnectionException;
 import com.redhat.openshift.dao.exceptions.InternalClientException;
 import com.redhat.openshift.dao.exceptions.InvalidCredentialsException;
 import com.redhat.openshift.dao.exceptions.OperationFailedException;
+import com.redhat.openshift.dao.exceptions.UnsupportedEnvironmentVersionException;
 import com.redhat.openshift.model.Application;
 import com.redhat.openshift.model.CloudAccount;
 import com.redhat.openshift.model.Environment;
@@ -104,10 +105,11 @@ public class SetupCommands {
         	
         	ArrayList<String> choices = new ArrayList<String>(); 
         	for (Environment env : environments) {
-    			choices.add(env.getName() + " (id: " + env.getId() + ")");
+        		if( env.getClusterStatus().equals("STARTED") )
+        			choices.add(env.getName() + " (id: " + env.getId() + ")");
     		}
-        	choices.add("N");
-        	int choiceIdx = prompt.promptChoice("Choose an environment id or N for a new cloud", choices);
+        	choices.add("New");
+        	int choiceIdx = prompt.promptChoice("Choose an environment id or New for a new environment", choices);
         	if(choices.get(choiceIdx).equalsIgnoreCase("N")){
         		return createEnvironment(in, out, cloudList, cloudAccount);
         	}else{
@@ -118,8 +120,17 @@ public class SetupCommands {
 	
 	private Application getApplication(String in, PipeOut out, Environment environment) 
 			throws InternalClientException, ConnectionException, InvalidCredentialsException, OperationFailedException {
+		List<Application> applications = null;
+		try{
+			applications = applicationDao.listApplications(environment);
+		}catch(UnsupportedEnvironmentVersionException e){
+			//ignore
+			return null;
+		}catch(ConnectionException e){
+			//ignore
+			return null;
+		}
 		
-		List<Application> applications = applicationDao.listApplications(environment);
         if(applications.size()==0){
         	return createApplication(in,out,environment);
         }else{

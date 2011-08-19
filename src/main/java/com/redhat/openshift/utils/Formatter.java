@@ -58,7 +58,10 @@ public class Formatter {
 			out.print("| ");
 			for(int i=0;i<fieldNames.length;i++){
 				Method mth = object.getClass().getMethod("get" + fieldNames[i], new Class[]{});
-				String str = mth.invoke(object).toString();
+				String str = "";
+				Object obj = mth.invoke(object);
+				if(obj != null)
+					str = obj.toString();
 				out.print(String.format("%" + columnSizes[i] + "s ", str));
 				out.print("| ");
 			}

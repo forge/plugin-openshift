@@ -43,6 +43,7 @@ public class ResponseObject {
 	private Map<String,Link> links;
 	
 	private String message;
+	private String version;
 	
 	public void setStatus(int status) {
 		this.status = status;
@@ -112,6 +113,12 @@ public class ResponseObject {
 	}
 	public List<Cartridge> getCartridges() {
 		return cartridges;
+	}
+	public Float getVersion() {
+		return Float.parseFloat(version);
+	}
+	public void setVersion(String version) {
+		this.version = version;
 	}
 
 	

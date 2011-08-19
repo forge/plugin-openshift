@@ -39,6 +39,7 @@ import com.redhat.openshift.dao.exceptions.ConnectionException;
 import com.redhat.openshift.dao.exceptions.InternalClientException;
 import com.redhat.openshift.dao.exceptions.InvalidCredentialsException;
 import com.redhat.openshift.dao.exceptions.OperationFailedException;
+import com.redhat.openshift.dao.exceptions.UnsupportedEnvironmentVersionException;
 import com.redhat.openshift.model.Application;
 import com.redhat.openshift.model.Cartridge;
 import com.redhat.openshift.model.Environment;
@@ -51,7 +52,7 @@ import com.redhat.openshift.model.ResponseObject;
  */
 public class ApplicationDao extends RestDao{
 	public List<Application> listApplications(Environment environment) 
-			throws InternalClientException, ConnectionException, InvalidCredentialsException, OperationFailedException {
+			throws InternalClientException, ConnectionException, InvalidCredentialsException, OperationFailedException, UnsupportedEnvironmentVersionException {
 		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
 		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", "GET", "/api");
 
@@ -59,6 +60,8 @@ public class ApplicationDao extends RestDao{
         String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
         method.addHeader("Authorization", "Basic "+ usernameAndPasswordEncoded);
 		ResponseObject response = doHttp(getHttpClient(), targetHost, method, 200);
+		if(response.getVersion() < 3.0f)
+			throw new UnsupportedEnvironmentVersionException();
 		
 		Link link = response.getLinks().get("list-applications");
 		method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref());
