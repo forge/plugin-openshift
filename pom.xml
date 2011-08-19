@@ -38,13 +38,13 @@
     <dependency>
       <groupId>org.jboss.forge</groupId>
       <artifactId>forge-shell-api</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
+      <version>${forge.api.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.jboss.forge</groupId>
       <artifactId>forge-maven-api</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
+      <version>${forge.api.version}</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>
