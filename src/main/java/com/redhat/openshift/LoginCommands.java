@@ -32,49 +32,56 @@ import com.redhat.openshift.dao.exceptions.InvalidCredentialsException;
 
 /**
  * @author <a href="mailto:kraman+forge@gmail.com">Krishna Raman</a>
- *  
+ * 
  */
 @Singleton
 public class LoginCommands {
-	@Inject private Provider<Openshift> base;	
-	@Inject private RhSsoDao ssoDao;
+    @Inject
+    private Provider<Openshift> base;
+    @Inject
+    private RhSsoDao ssoDao;
 
-	public String login(String in, PipeOut out, Properties rhcProperties, ShellPrompt prompt, String login, String password){
-		//check properties
-		if(login == null || login.trim().equals("")){
-			login = rhcProperties.getProperty("rhlogin", null);
-			if(login != null){
-				//remove extra quotes around login name (Express CLI seem to add this)
-				if(login.trim().startsWith("\"")){
-					login = login.trim();
-					login = login.substring(1,login.length()-1);
-				}
-			}
+    public String login(String in, PipeOut out, Properties rhcProperties,
+	    ShellPrompt prompt, String login, String password) {
+	// check properties
+	if (login == null || login.trim().equals("")) {
+	    login = rhcProperties.getProperty("rhlogin", null);
+	    if (login != null) {
+		// remove extra quotes around login name (Express CLI seem to
+		// add this)
+		if (login.trim().startsWith("\"")) {
+		    login = login.trim();
+		    login = login.substring(1, login.length() - 1);
 		}
-		
-		//if still null, prompt user
-		if(login == null || login.trim().equals("")){
-			login = prompt.prompt("Login name");
-		}
-		
-		if(password == null || password.trim().equals("")){
-			password = prompt.prompt("Password");
-		}
-		
-		String loginServer = rhcProperties.getProperty("login_server", "https://www.redhat.com");
-		out.print(ShellColor.BOLD, "Logging into Openshift Flex as " + login + "\n");
-		try{
-			String ssoCookie = ssoDao.login(loginServer,login, password);
-			out.println(ShellColor.GREEN,"Logged in succesfully");
-			base.get().setUsername(login);
-			return ssoCookie;
-		}catch(InvalidCredentialsException e){
-			out.println(ShellColor.RED,"Invalid credentials");
-		}catch (InternalClientException e) {
-			out.println(ShellColor.RED,"Encountered an unexpected error while logging in.");
-		} catch (ConnectionException e) {
-			out.println(ShellColor.RED,"Unable to connect to login server.");
-		}
-		return null;
+	    }
 	}
+
+	// if still null, prompt user
+	if (login == null || login.trim().equals("")) {
+	    login = prompt.prompt("Login name");
+	}
+
+	if (password == null || password.trim().equals("")) {
+	    password = prompt.promptSecret("Password");
+	}
+
+	String loginServer = rhcProperties.getProperty("login_server",
+		"https://www.redhat.com");
+	out.print(ShellColor.BOLD, "Logging into Openshift Flex as " + login
+		+ "\n");
+	try {
+	    String ssoCookie = ssoDao.login(loginServer, login, password);
+	    out.println(ShellColor.GREEN, "Logged in succesfully");
+	    base.get().setUsername(login);
+	    return ssoCookie;
+	} catch (InvalidCredentialsException e) {
+	    out.println(ShellColor.RED, "Invalid credentials");
+	} catch (InternalClientException e) {
+	    out.println(ShellColor.RED,
+		    "Encountered an unexpected error while logging in.");
+	} catch (ConnectionException e) {
+	    out.println(ShellColor.RED, "Unable to connect to login server.");
+	}
+	return null;
+    }
 }
