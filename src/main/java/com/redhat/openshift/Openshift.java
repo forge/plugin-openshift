@@ -59,7 +59,7 @@ import com.redhat.openshift.model.Environment;
  * @author <a href="mailto:kraman+forge@gmail.com">Krishna Raman</a>
  * 
  */
-@Alias("rhc")
+@Alias("rhc-flex")
 @Singleton
 public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
     @Inject
