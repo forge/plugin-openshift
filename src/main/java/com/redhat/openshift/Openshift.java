@@ -257,7 +257,6 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 	    @PipeIn String in,
 	    PipeOut out,
 	    @Option(name = "name", required = true, description = "Name of the new environment") String environmentName,
-	    @Option(name = "adminPassword", required = true, description = "Password for the admin user") String adminPassword,
 	    @Option(name = "cloudId", required = true, description = "Name or ID of the cloud account to use", completer = CloudIdListCompleter.class) String cloudId,
 	    @Option(name = "num-servers", required = true, defaultValue = "1", description = "Number of servers to start the environment with") String numNodes,
 	    @Option(name = "location", required = true, defaultValue = "us-east-1", completer = CloudRegionCompleter.class, description = "Cloud location/region to create the environment in") String location,
@@ -266,6 +265,9 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 	    @Option(name = "min-cores-per-node", required = true, defaultValue = "1", description = "Number of cores per server") String minCoresPerNode,
 	    @Option(name = "min-volume-size-per-node", required = true, defaultValue = "10", description = "File system volume size in GB") String minVolumeSizePerNode,
 	    @Option(name = "min-memory-per-node", required = true, defaultValue = "1024", description = "Minimum RAM per server") String minMemoryPerNode) {
+
+	String adminPassword = prompt
+		.promptSecret("Password for the admin user [ENTER to leave blank]");
 
 	envCommands.createEnvironment(in, out, environmentName, adminPassword,
 		cloudId, numNodes, location, architecture, isLoadBalanced,
