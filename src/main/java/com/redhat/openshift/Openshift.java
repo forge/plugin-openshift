@@ -28,6 +28,7 @@ import java.util.Properties;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import org.jboss.forge.parser.java.util.Strings;
 import org.jboss.forge.shell.Shell;
 import org.jboss.forge.shell.ShellColor;
 import org.jboss.forge.shell.ShellPrompt;
@@ -266,8 +267,11 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 	    @Option(name = "min-volume-size-per-node", required = true, defaultValue = "10", description = "File system volume size in GB") String minVolumeSizePerNode,
 	    @Option(name = "min-memory-per-node", required = true, defaultValue = "1024", description = "Minimum RAM per server") String minMemoryPerNode) {
 
-	String adminPassword = prompt
-		.promptSecret("Password for the admin user [ENTER to leave blank]");
+	String adminPassword = null;
+	while (Strings.isNullOrEmpty(adminPassword)) {
+	    adminPassword = prompt
+		    .promptSecret("Password for the admin user [required]:");
+	}
 
 	envCommands.createEnvironment(in, out, environmentName, adminPassword,
 		cloudId, numNodes, location, architecture, isLoadBalanced,
