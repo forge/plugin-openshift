@@ -261,7 +261,7 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
 	    @Option(name = "cloudId", required = true, description = "Name or ID of the cloud account to use", completer = CloudIdListCompleter.class) String cloudId,
 	    @Option(name = "num-servers", required = true, defaultValue = "1", description = "Number of servers to start the environment with") String numNodes,
 	    @Option(name = "location", required = true, defaultValue = "us-east-1", completer = CloudRegionCompleter.class, description = "Cloud location/region to create the environment in") String location,
-	    @Option(name = "arch", required = true, completer = CloudArchCompleter.class, description = "VM architecture to use for this environment (32 or 64)") String architecture,
+	    @Option(name = "arch", required = true, completer = CloudArchCompleter.class, description = "VM architecture to use for this environment (32 or 64)", defaultValue = "32") String architecture,
 	    @Option(name = "load-balanced", required = true, flagOnly = true, defaultValue = "false", description = "Does the environment need a load balancer?") String isLoadBalanced,
 	    @Option(name = "min-cores-per-node", required = true, defaultValue = "1", description = "Number of cores per server") String minCoresPerNode,
 	    @Option(name = "min-volume-size-per-node", required = true, defaultValue = "10", description = "File system volume size in GB") String minVolumeSizePerNode,
