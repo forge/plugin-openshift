@@ -70,10 +70,10 @@ public class SetupCommands {
 	    for (CloudAccount acc : cloudList) {
 		choices.add(acc.getName() + " (id: " + acc.getId() + ")");
 	    }
-	    choices.add("New cloud account");
+	    choices.add("New");
 	    int choiceIdx = prompt.promptChoice(
-		    "Choose a cloud account or N for a new cloud", choices);
-	    if (choices.get(choiceIdx).equalsIgnoreCase("N")) {
+		    "Choose a cloud account or create a new cloud account", choices);
+	    if (choices.get(choiceIdx).equalsIgnoreCase("New")) {
 		shell.execute("rhc-flex register-cloud");
 		return base.get().getLastCloudCreated();
 	    } else {
@@ -136,7 +136,7 @@ public class SetupCommands {
 	    int choiceIdx = prompt.promptChoice(
 		    "Choose an environment id or New for a new environment",
 		    choices);
-	    if (choices.get(choiceIdx).equalsIgnoreCase("N")) {
+	    if (choices.get(choiceIdx).equalsIgnoreCase("New")) {
 		return createEnvironment(in, out, cloudList, cloudAccount);
 	    } else {
 		return environments.get(choiceIdx);
