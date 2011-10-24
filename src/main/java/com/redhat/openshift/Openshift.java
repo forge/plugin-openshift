@@ -380,7 +380,7 @@ public class Openshift implements org.jboss.forge.shell.plugins.Plugin {
     protected String getSsoCookie() {
 	if (this.ssoCookie == null)
 	    try {
-		shell.execute("rhc login");
+		shell.execute("rhc-flex login");
 	    } catch (Exception e) {
 		throw new RuntimeException("Login failed with exception: "
 			+ e.getMessage(), e);

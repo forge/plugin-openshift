@@ -52,7 +52,7 @@ public class SetupCommands {
 	try {
 	    if (cloudList.size() == 0) {
 		out.println("You do not have any cloud accounts, creating a new one...");
-		shell.execute("rhc register-cloud");
+		shell.execute("rhc-flex register-cloud");
 		return base.get().getLastCloudCreated();
 	    }
 
@@ -74,7 +74,7 @@ public class SetupCommands {
 	    int choiceIdx = prompt.promptChoice(
 		    "Choose a cloud account or N for a new cloud", choices);
 	    if (choices.get(choiceIdx).equalsIgnoreCase("N")) {
-		shell.execute("rhc register-cloud");
+		shell.execute("rhc-flex register-cloud");
 		return base.get().getLastCloudCreated();
 	    } else {
 		return cloudList.get(choiceIdx);
@@ -90,7 +90,7 @@ public class SetupCommands {
 	    out.println("You do not have any environments, creating a new one...");
 	    out.println();
 	    if (lastCloudCreated != null) {
-		shell.execute("rhc create-environment --cloudId "
+		shell.execute("rhc-flex create-environment --cloudId "
 			+ lastCloudCreated.getId());
 		return base.get().getLastEnvironmentCreated();
 	    } else {
@@ -193,7 +193,7 @@ public class SetupCommands {
 	try {
 	    out.println("You do not have any environments, creating a new one...");
 	    out.println();
-	    shell.execute("rhc create-application --environmentId "
+	    shell.execute("rhc-flex create-application --environmentId "
 		    + environment.getId());
 	    return base.get().getLastApplicationCreated();
 	} catch (Exception e) {
