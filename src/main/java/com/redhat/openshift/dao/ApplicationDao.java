@@ -80,6 +80,8 @@ public class ApplicationDao extends RestDao{
 		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
 		
 		Link link = app.getLinks().get("delete");
+        if(link == null)
+            throw new OperationFailedException("Delete operation is not available. Please stop the application first");
 		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref());
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();

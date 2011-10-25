@@ -326,6 +326,8 @@ public class ApplicationCommands {
 			if(app == null)
 				return;
 			applicationDao.deleteApplication(app.getEnvironment(), app);
+		}catch (com.redhat.openshift.dao.exceptions.OperationFailedException e) {
+			out.println(ShellColor.RED,"Unable to delete the application. Please stop the application first.");	
 		}catch (InternalClientException e) {
 			out.println(ShellColor.RED,"Encountered an unexpected error. Do you have the latest openshift plugin?");	
 		} catch (Exception e) {
