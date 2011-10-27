@@ -17,6 +17,7 @@ package com.redhat.openshift.dao;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
+import java.net.ConnectException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +54,12 @@ import com.redhat.openshift.model.ResponseObject;
 public class ApplicationDao extends RestDao{
 	public List<Application> listApplications(Environment environment) 
 			throws InternalClientException, ConnectionException, InvalidCredentialsException, OperationFailedException, UnsupportedEnvironmentVersionException {
-		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		HttpHost targetHost = null;
+		try{
+			targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		}catch(IllegalArgumentException iae){
+			throw new ConnectionException(iae);
+		}
 		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", "GET", "/api");
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
@@ -77,7 +83,12 @@ public class ApplicationDao extends RestDao{
 	
 	public void deleteApplication(Environment environment, Application app)
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException{
-		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		HttpHost targetHost = null;
+		try{
+			targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		}catch(IllegalArgumentException iae){
+			throw new ConnectionException(iae);
+		} 
 		
 		Link link = app.getLinks().get("delete");
         if(link == null)
@@ -93,7 +104,12 @@ public class ApplicationDao extends RestDao{
 
 	public void stopApplication(Environment environment, Application app)
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException{
-		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		HttpHost targetHost = null;
+		try{
+			targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		}catch(IllegalArgumentException iae){
+			throw new ConnectionException(iae);
+		} 
 		
 		Link link = app.getLinks().get("stop");
 		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref());
@@ -116,7 +132,12 @@ public class ApplicationDao extends RestDao{
 
 	public void startApplication(Environment environment, Application app)
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException{
-		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		HttpHost targetHost = null;
+		try{
+			targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		}catch(IllegalArgumentException iae){
+			throw new ConnectionException(iae);
+		} 
 		
 		Link link = app.getLinks().get("start");
 		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", link.getMethod(), link.getHref());
@@ -139,7 +160,12 @@ public class ApplicationDao extends RestDao{
 	
 	public void restartApplication(Environment environment, Application app)
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException{
-		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		HttpHost targetHost = null;
+		try{
+			targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		}catch(IllegalArgumentException iae){
+			throw new ConnectionException(iae);
+		} 
 		
 		Link link = null;
 		if(app.getLinks().containsKey("restart"))
@@ -169,7 +195,13 @@ public class ApplicationDao extends RestDao{
 	
 	public void deployWar(Environment environment, Application app, File warFile)
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException{
-		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		HttpHost targetHost = null;
+		try{
+			targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		}catch(IllegalArgumentException iae){
+			throw new ConnectionException(iae);
+		}
+		
 		String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
 		String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
 		
@@ -203,7 +235,13 @@ public class ApplicationDao extends RestDao{
 
 	public Application createApplication(Environment environment, String appName, String appVersion) 
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException {
-		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		HttpHost targetHost = null;
+		try{
+			targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		}catch(IllegalArgumentException iae){
+			throw new ConnectionException(iae);
+		}
+		
 		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", "GET", "/api");
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
@@ -231,7 +269,13 @@ public class ApplicationDao extends RestDao{
 
 	public List<Cartridge> getAvailableCartridges(Environment environment) 
 			throws InternalClientException, ConnectionException, InvalidCredentialsException, OperationFailedException {
-		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		HttpHost targetHost = null;
+		try{
+			targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		}catch(IllegalArgumentException iae){
+			throw new ConnectionException(iae);
+		}
+		
 		HttpRequestBase method = super.getHttpMethod(getHttpClient(), "", "GET", "/api");
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
@@ -249,7 +293,12 @@ public class ApplicationDao extends RestDao{
 	
 	public List<Cartridge> getCartridges(Environment environment, Application app) 
 			throws ConnectionException, InternalClientException, InvalidCredentialsException, OperationFailedException {
-		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		HttpHost targetHost = null;
+		try{
+			targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		}catch(IllegalArgumentException iae){
+			throw new ConnectionException(iae);
+		} 
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
         String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
@@ -264,7 +313,12 @@ public class ApplicationDao extends RestDao{
 
 	public void setCartridges(Environment environment, Application app, List<Cartridge> cartridges) 
 			throws InternalClientException, ConnectionException, InvalidCredentialsException, OperationFailedException {
-		HttpHost targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		HttpHost targetHost = null;
+		try{
+			targetHost = new HttpHost(environment.getDns(), 4242, "https"); 
+		}catch(IllegalArgumentException iae){
+			throw new ConnectionException(iae);
+		} 
 
         String usernameAndPassword = environment.getUsername() + ":" + environment.getPassword();
         String usernameAndPasswordEncoded = new String(Base64.encodeBase64(usernameAndPassword.getBytes()));
