@@ -119,7 +119,7 @@ class OpenShiftPlugin implements org.jboss.forge.shell.plugins.Plugin {
            IUser user = openshiftService.getUser();
            IApplication app = user.getDefaultDomain().getApplicationByName(name);
            String status = app.getCreationLog();
-           ShellMessages.info(out, "Status of application follows\n");
+           ShellMessages.info(out, "Status of application follows (" + app.hasCreationLog() + ")\n");
            out.print(status);
         } catch (InvalidCredentialsOpenShiftException e) {
            Util.displayCredentialsError(out, e);
