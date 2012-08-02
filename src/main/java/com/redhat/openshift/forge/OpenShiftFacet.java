@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.List;
 
 import javax.inject.Inject;
 import javax.net.ssl.HostnameVerifier;
@@ -47,6 +48,7 @@ import com.openshift.client.JenkinsCartridge;
 import com.openshift.client.NotFoundOpenShiftException;
 import com.openshift.client.OpenShiftEndpointException;
 import com.openshift.client.OpenShiftException;
+import com.openshift.internal.client.Cartridge;
 import com.openshift.internal.client.JenkinsApplication;
 import com.redhat.openshift.core.OpenShiftServiceFactory;
 
@@ -106,8 +108,14 @@ public class OpenShiftFacet extends BaseFacet {
 				.create(rhLogin, password, baseUrl);
 
         IUser user = openshiftService.getUser();
+        
+        ShellMessages.info(out, "Found OpenShift User: " + user.getRhlogin());
+        
+        ICartridge jbossCartridge = getJBossCartridge(openshiftService);
+        
+        ShellMessages.info(out, "Found JBoss Cartridge: " + jbossCartridge.getName());
 
-        IApplication application = Util.createApplication(openshiftService, new JBossCartridge(name), user, name, out);
+        IApplication application = Util.createApplication(openshiftService, jbossCartridge, user, name, out);
         if (application == null)
            return false;
 
@@ -137,6 +145,16 @@ public class OpenShiftFacet extends BaseFacet {
         ShellMessages.success(out, "Application deployed to " + application.getApplicationUrl());
 
         return true;
+    }
+    
+    private ICartridge getJBossCartridge(IOpenShiftConnection openshiftService) throws OpenShiftException {
+    	List<ICartridge> cartridges = openshiftService.getStandaloneCartridges();
+    	for (ICartridge cartridge : cartridges){
+    		if (cartridge.getName().contains("jbossas"))
+    			return cartridge;
+    	}
+    	
+    	return null;
     }
 
     private void addOpenShiftProfile() {
