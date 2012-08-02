@@ -37,21 +37,17 @@ import org.jboss.forge.shell.ShellPrompt;
 import org.jboss.forge.shell.plugins.Alias;
 import org.jboss.forge.shell.util.NativeSystemCall;
 
-import com.openshift.express.client.IApplication;
-import com.openshift.express.client.ICartridge;
-import com.openshift.express.client.IOpenShiftService;
-import com.openshift.express.client.IUser;
-import com.openshift.express.client.InvalidCredentialsOpenShiftException;
-import com.openshift.express.client.JBossCartridge;
-import com.openshift.express.client.JenkinsCartridge;
-import com.openshift.express.client.NotFoundOpenShiftException;
-import com.openshift.express.client.OpenShiftEndpointException;
-import com.openshift.express.client.OpenShiftException;
-import com.openshift.express.internal.client.ApplicationInfo;
-import com.openshift.express.internal.client.InternalUser;
-import com.openshift.express.internal.client.JenkinsApplication;
-import com.openshift.express.internal.client.JenkinsClientEmbeddableCartridge;
-import com.openshift.express.internal.client.UserInfo;
+import com.openshift.client.IApplication;
+import com.openshift.client.ICartridge;
+import com.openshift.client.IOpenShiftConnection;
+import com.openshift.client.IUser;
+import com.openshift.client.InvalidCredentialsOpenShiftException;
+import com.openshift.client.JBossCartridge;
+import com.openshift.client.JenkinsCartridge;
+import com.openshift.client.NotFoundOpenShiftException;
+import com.openshift.client.OpenShiftEndpointException;
+import com.openshift.client.OpenShiftException;
+import com.openshift.internal.client.JenkinsApplication;
 import com.redhat.openshift.core.OpenShiftServiceFactory;
 
 @Alias("forge.openshift")
@@ -106,19 +102,12 @@ public class OpenShiftFacet extends BaseFacet {
         // Set up the project name :-)
         configuration.setName(name);
         String password = Util.getPassword(prompt);
-        IOpenShiftService openshift = OpenShiftServiceFactory.create(baseUrl);
+        IOpenShiftConnection openshiftService = OpenShiftServiceFactory
+				.create(rhLogin, password, baseUrl);
 
-        IUser user = new InternalUser(rhLogin, password, openshift);
+        IUser user = openshiftService.getUser();
 
-        // Check for a domain before proceeding
-        try {
-            openshift.getUserInfo(user);
-        } catch (NotFoundOpenShiftException e) {
-            Util.displayNonExistentDomainError(out, e);
-            return false;
-        }
-
-        IApplication application = Util.createApplication(openshift, new JBossCartridge(openshift, user), user, name, out);
+        IApplication application = Util.createApplication(openshiftService, new JBossCartridge(name), user, name, out);
         if (application == null)
            return false;
 
@@ -135,7 +124,7 @@ public class OpenShiftFacet extends BaseFacet {
         }
 
         if (!Util.isOpenshiftRemotePresent(out, project)) {
-            String[] remoteParams = { "remote", "add", "openshift", "-f", application.getGitUri() };
+            String[] remoteParams = { "remote", "add", "openshift", "-f", application.getGitUrl() };
             if (NativeSystemCall.execFromPath("git", remoteParams, out, project.getProjectRoot()) != 0) {
                ShellMessages.error(out, "Failed to connect to OpenShift GIT repository, project is in an inconsistent state. Remove the .git directory manually, and delete the application using rhc-ctl-app -c destroy -a " + application.getName() + " -b");
                return false;

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -17,16 +18,16 @@ import org.jboss.forge.shell.ShellMessages;
 import org.jboss.forge.shell.ShellPrintWriter;
 import org.jboss.forge.shell.ShellPrompt;
 
-import com.openshift.express.client.IApplication;
-import com.openshift.express.client.ICartridge;
-import com.openshift.express.client.IOpenShiftService;
-import com.openshift.express.client.IUser;
-import com.openshift.express.client.InvalidCredentialsOpenShiftException;
-import com.openshift.express.client.NotFoundOpenShiftException;
-import com.openshift.express.client.OpenShiftEndpointException;
-import com.openshift.express.client.OpenShiftException;
-import com.openshift.express.internal.client.ApplicationInfo;
-import com.openshift.express.internal.client.EmbeddableCartridgeInfo;
+import com.openshift.client.IApplication;
+import com.openshift.client.ICartridge;
+import com.openshift.client.IEmbeddableCartridge;
+import com.openshift.client.IEmbeddedCartridge;
+import com.openshift.client.IOpenShiftConnection;
+import com.openshift.client.IUser;
+import com.openshift.client.InvalidCredentialsOpenShiftException;
+import com.openshift.client.NotFoundOpenShiftException;
+import com.openshift.client.OpenShiftEndpointException;
+import com.openshift.client.OpenShiftException;
 
 public class Util {
 
@@ -189,17 +190,17 @@ public class Util {
 	    ShellMessages.error(out, "Invalid user credentials.  Please check your Red Hat login and password and try again.\n");
 	}
 
-	public static void printApplicationInfo(ShellPrintWriter out, ApplicationInfo app,
-			String namespace, String domain) {
+	public static void printApplicationInfo(ShellPrintWriter out, IApplication app,
+			String namespace, String domain) throws OpenShiftException {
 		Map<String, String> attrs = new LinkedHashMap<String, String>();
 		attrs.put("Framework", app.getCartridge().getName());
 		attrs.put("Creation", app.getCreationTime().toString());
-		attrs.put("UUID", app.getUuid());
+		attrs.put("UUID", app.getUUID());
 
 		// TODO: client library should provide these URIs
 		attrs.put(
 				"Git URL",
-				MessageFormat.format(GIT_URI_PATTERN, app.getUuid(),
+				MessageFormat.format(GIT_URI_PATTERN, app.getUUID(),
 						app.getName(), namespace, domain));
 		attrs.put("Public URL", MessageFormat.format(APPLICATION_URL_PATTERN,
 				app.getName(), namespace, domain));
@@ -223,14 +224,14 @@ public class Util {
 	}
 
 	private static String formatEmbeddedCartridges(
-			Collection<EmbeddableCartridgeInfo> cartridges) {
+			List<IEmbeddedCartridge> cartridges) {
 		if (cartridges.size() == 0) {
 			return "None";
 		}
 
 		StringBuilder carts = new StringBuilder();
 
-		for (EmbeddableCartridgeInfo info : cartridges) {
+		for (IEmbeddableCartridge info : cartridges) {
 			if (carts.length() > 0) {
 				carts.append(", ");
 			}
@@ -265,11 +266,11 @@ public class Util {
 		}
 	}
 	
-   public static IApplication createApplication(IOpenShiftService openshift, ICartridge cartridge, IUser user, String name, ShellPrintWriter out) throws OpenShiftException {
+   public static IApplication createApplication(IOpenShiftConnection openshift, ICartridge cartridge, IUser user, String name, ShellPrintWriter out) throws OpenShiftException {
       // Attempt to create the application
       IApplication application = null;
       try {
-         application = openshift.createApplication(name, cartridge, user);
+         application = openshift.getUser().getDefaultDomain().createApplication(name, cartridge);
       } catch (OpenShiftEndpointException e) {
          ShellMessages.error(out, "OpenShift failed to create the application");
          ShellMessages.error(out, e.getMessage());
