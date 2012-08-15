@@ -5,10 +5,12 @@ import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
-public class TestUtil {
+public class TestUtil
+{
 
    @Test
-   public void testUnquoteValid() {
+   public void testUnquoteValid()
+   {
       assertEquals("", Util.unquote(""));
       assertEquals("", Util.unquote("''"));
       assertEquals("", Util.unquote("\"\""));
@@ -23,7 +25,8 @@ public class TestUtil {
    }
 
    @Test
-   public void testUnquoteInvalid() {
+   public void testUnquoteInvalid()
+   {
       assertNull(Util.unquote(null));
 
       assertEquals("'", Util.unquote("'"));
