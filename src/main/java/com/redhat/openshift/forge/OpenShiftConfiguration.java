@@ -15,61 +15,72 @@ import org.jboss.forge.shell.ShellPrintWriter;
 import org.jboss.forge.shell.project.ProjectScoped;
 
 @ProjectScoped
-public class OpenShiftConfiguration {
+public class OpenShiftConfiguration
+{
 
    private static final String NAMESPACE = "forge.openshift";
-   
-   private enum Key {
+
+   private enum Key
+   {
       NAME,
       RHLOGIN
    }
-   
+
    private Properties rhcProperties;
-   
+
    @Inject
    private ShellPrintWriter out;
-   
+
    @Inject
    private Configuration persistentConfiguration;
-   
+
    @PostConstruct
-   public void load() {
+   public void load()
+   {
       rhcProperties = new Properties();
-      try {
+      try
+      {
          rhcProperties.load(new FileReader(EXPRESS_CONF));
          ShellMessages.info(out, "Loaded OpenShift configuration from "
-               + EXPRESS_CONF);
-      } catch (Exception e) {
+                  + EXPRESS_CONF);
+      }
+      catch (Exception e)
+      {
          // Swallow
       }
    }
 
-   public String getName() {
+   public String getName()
+   {
       return persistentConfiguration.getScopedConfiguration(PROJECT).getString(createKey(Key.NAME));
    }
 
-   public void setName(String name) {
+   public void setName(String name)
+   {
       this.persistentConfiguration.getScopedConfiguration(PROJECT).setProperty(createKey(Key.NAME), name);
    }
 
-   public String getRhLogin() {
+   public String getRhLogin()
+   {
       return persistentConfiguration.getScopedConfiguration(ConfigurationScope.USER).getString(createKey(Key.RHLOGIN));
    }
 
-   public void setRhLogin(String rhLogin) {
-      persistentConfiguration.getScopedConfiguration(ConfigurationScope.USER).setProperty(createKey(Key.RHLOGIN), rhLogin);
+   public void setRhLogin(String rhLogin)
+   {
+      persistentConfiguration.getScopedConfiguration(ConfigurationScope.USER).setProperty(createKey(Key.RHLOGIN),
+               rhLogin);
    }
-   
-   private String createKey(Key key) {
+
+   private String createKey(Key key)
+   {
       return NAMESPACE + "." + key.name();
    }
-   
-   private static final String EXPRESS_CONF = System.getProperty("user.home")
-         + "/.openshift/express.conf";
-   
 
-   
-   public Properties getRhcProperties() {
+   private static final String EXPRESS_CONF = System.getProperty("user.home")
+            + "/.openshift/express.conf";
+
+   public Properties getRhcProperties()
+   {
       return rhcProperties;
    }
 
