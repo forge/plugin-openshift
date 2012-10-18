@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -43,32 +44,24 @@ import com.openshift.client.ICartridge;
 import com.openshift.client.IOpenShiftConnection;
 import com.openshift.client.IUser;
 import com.openshift.client.InvalidCredentialsOpenShiftException;
-import com.openshift.client.JBossCartridge;
-import com.openshift.client.JenkinsCartridge;
-import com.openshift.client.NotFoundOpenShiftException;
-import com.openshift.client.OpenShiftEndpointException;
 import com.openshift.client.OpenShiftException;
-import com.openshift.internal.client.Cartridge;
-import com.openshift.internal.client.JenkinsApplication;
 import com.redhat.openshift.core.OpenShiftServiceFactory;
 
 @Alias("forge.openshift")
 public class OpenShiftFacet extends BaseFacet {
-  
-    private static final int MAX_WAIT = 500;
 
     @Inject
     private ShellPrompt prompt;
 
     @Inject
     private ShellPrintWriter out;
-    
-    @Inject 
+
+    @Inject
     private Shell shell;
 
     @Inject
     private OpenShiftConfiguration configuration;
-    
+
     @Inject
     private FacetInstallerConfigurationHolder holder;
 
@@ -94,35 +87,49 @@ public class OpenShiftFacet extends BaseFacet {
     }
 
     private boolean internalInstall() throws Exception, InvalidCredentialsOpenShiftException {
-        
+
         String name = Util.getName(holder.getName(), configuration, project, prompt);
         String rhLogin = Util.getRhLogin(holder.getRhLogin(), configuration, out, prompt);
         String baseUrl = Util.getDefaultBaseUrl(out, configuration);
-        
+
         ShellMessages.info(out, "Using RHLOGIN:" + rhLogin + " for " + baseUrl);
 
         // Set up the project name :-)
         configuration.setName(name);
         String password = Util.getPassword(prompt);
-        IOpenShiftConnection openshiftService = OpenShiftServiceFactory
-				.create(rhLogin, password, baseUrl);
+        IOpenShiftConnection openshiftService = OpenShiftServiceFactory.create(rhLogin, password, baseUrl);
+        boolean appExists = openshiftService.getUser().getDefaultDomain().hasApplicationByName(name);
 
         IUser user = openshiftService.getUser();
-        
-        ShellMessages.info(out, "Found OpenShift User: " + user.getRhlogin());
-        
-        ICartridge jbossCartridge = getJBossCartridge(openshiftService);
-        
-        ShellMessages.info(out, "Found JBoss Cartridge: " + jbossCartridge.getName());
 
-        IApplication application = Util.createApplication(openshiftService, jbossCartridge, user, name, out);
-        if (application == null)
-           return false;
+        ShellMessages.info(out, "Found OpenShift User: " + user.getRhlogin());
+
+        IApplication application = null;
+        if (appExists) {
+            ShellMessages.warn(out, String.format("Application with [%s] name already exists on Openshift", name));
+            boolean ok = shell.promptBoolean("Do you want to continue ?");
+            if (ok) {
+                application = openshiftService.getUser().getDefaultDomain().getApplicationByName(name);
+            } else {
+                ShellMessages.warn(out, "Setup cancelled");
+                return false;
+            }
+        } else {
+            ICartridge jbossCartridge = getJBossCartridge(openshiftService);
+
+            ShellMessages.info(out, "Using JBoss Cartridge: " + jbossCartridge.getName());
+            application = Util.createApplication(openshiftService, jbossCartridge, user, name, holder.isScaling(), out);
+        }
+
+        if (application == null) {
+            return false;
+        }
 
         if (!project.getProjectRoot().getChildDirectory(".git").exists()) {
             String[] params = { "init" };
-            if (NativeSystemCall.execFromPath("git", params, out, project.getProjectRoot()) != 0)
-               return false;
+            if (NativeSystemCall.execFromPath("git", params, out, project.getProjectRoot()) != 0) {
+                return false;
+            }
         }
 
         ShellMessages.info(out, "Waiting for OpenShift to propagate DNS");
@@ -132,29 +139,33 @@ public class OpenShiftFacet extends BaseFacet {
         }
 
         if (!Util.isOpenshiftRemotePresent(out, project)) {
-            String[] remoteParams = { "remote", "add", "openshift", "-f", application.getGitUrl() };
+            String[] remoteParams = { "remote", "add", holder.getGitRemoteRepo(), "-f", application.getGitUrl() };
             if (NativeSystemCall.execFromPath("git", remoteParams, out, project.getProjectRoot()) != 0) {
-               ShellMessages.error(out, "Failed to connect to OpenShift GIT repository, project is in an inconsistent state. Remove the .git directory manually, and delete the application using rhc-ctl-app -c destroy -a " + application.getName() + " -b");
-               return false;
+                ShellMessages
+                        .error(out,
+                                "Failed to connect to OpenShift GIT repository, project is in an inconsistent state. Remove the .git directory manually, and delete the application using rhc-ctl-app -c destroy -a "
+                                        + application.getName() + " -b");
+                return false;
             }
-        } else
-           ShellMessages.info(out, "'openshift' remote alias already present in Git, using it");
-        
+        } else {
+            ShellMessages.info(out,
+                    String.format("'%s' remote alias already present in Git, using it", holder.getGitRemoteRepo()));
+        }
         addOpenShiftProfile();
-
         ShellMessages.success(out, "Application deployed to " + application.getApplicationUrl());
-
         return true;
+
     }
-    
+
     private ICartridge getJBossCartridge(IOpenShiftConnection openshiftService) throws OpenShiftException {
-    	List<ICartridge> cartridges = openshiftService.getStandaloneCartridges();
-    	for (ICartridge cartridge : cartridges){
-    		if (cartridge.getName().contains("jbossas"))
-    			return cartridge;
-    	}
-    	
-    	return null;
+        List<ICartridge> cartridges = openshiftService.getStandaloneCartridges();
+        List<ICartridge> jbossCartdriges = new ArrayList<ICartridge>();
+        for (ICartridge cartridge : cartridges) {
+            if (cartridge.getName().contains("jboss")) {
+                jbossCartdriges.add(cartridge);
+            }
+        }
+        return shell.promptChoiceTyped("Choose a JBoss Cartridge:", jbossCartdriges, jbossCartdriges.get(0));
     }
 
     private void addOpenShiftProfile() {
@@ -186,23 +197,22 @@ public class OpenShiftFacet extends BaseFacet {
     }
 
     private boolean waitForOpenShift(String urlString, ShellPrintWriter out) {
-    	int dnsTimeout = Util.getDefaultDNSTimeout(out, configuration);
+        int dnsTimeout = Util.getDefaultDNSTimeout(out, configuration);
         for (int i = 0; i < dnsTimeout; i++) {
             try {
-            	URL url = new URL(urlString);
+                URL url = new URL(urlString);
                 if (i % 5 == 0)
                     ShellMessages.info(out, "Trying to contact " + url + " (attempt " + (i + 1) + " of " + dnsTimeout + ")");
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 if (isHttps(url)) {
-        			HttpsURLConnection httpsConnection = (HttpsURLConnection) connection;
-        			httpsConnection.setHostnameVerifier(new NoopHostnameVerifier());
-        			setPermissiveSSLSocketFactory(httpsConnection);
-        		}
+                    HttpsURLConnection httpsConnection = (HttpsURLConnection) connection;
+                    httpsConnection.setHostnameVerifier(new NoopHostnameVerifier());
+                    setPermissiveSSLSocketFactory(httpsConnection);
+                }
                 if (connection.getResponseCode() == HttpURLConnection.HTTP_OK)
                     return true;
-                else
-                    if (shell.isVerbose())
-                        ShellMessages.info(out, "ResponseCode=" + connection.getResponseCode());
+                else if (shell.isVerbose())
+                    ShellMessages.info(out, "ResponseCode=" + connection.getResponseCode());
             } catch (Exception e) {
                 if (shell.isVerbose())
                     ShellMessages.info(out, "Caught exception: " + e);
@@ -215,44 +225,42 @@ public class OpenShiftFacet extends BaseFacet {
         }
         return false;
     }
-    
+
     private boolean isHttps(URL url) {
-		return "https".equals(url.getProtocol());
-	}
-    
+        return "https".equals(url.getProtocol());
+    }
+
     private static class NoopHostnameVerifier implements HostnameVerifier {
 
-		public boolean verify(String hostname, SSLSession sslSession) {
-			return true;
-		}
-	}
-    
+        public boolean verify(String hostname, SSLSession sslSession) {
+            return true;
+        }
+    }
+
     private void setPermissiveSSLSocketFactory(HttpsURLConnection connection) {
-		try {
-			SSLContext sslContext = SSLContext.getInstance("SSL");
-			sslContext.init(new KeyManager[0], new TrustManager[] { new PermissiveTrustManager() }, new SecureRandom());
-			SSLSocketFactory socketFactory = sslContext.getSocketFactory();
-			((HttpsURLConnection) connection).setSSLSocketFactory(socketFactory);
-		} catch (KeyManagementException e) {
-			// ignore
-		} catch (NoSuchAlgorithmException e) {
-			// ignore
-		}
-	}
-    
+        try {
+            SSLContext sslContext = SSLContext.getInstance("SSL");
+            sslContext.init(new KeyManager[0], new TrustManager[] { new PermissiveTrustManager() }, new SecureRandom());
+            SSLSocketFactory socketFactory = sslContext.getSocketFactory();
+            ((HttpsURLConnection) connection).setSSLSocketFactory(socketFactory);
+        } catch (KeyManagementException e) {
+            // ignore
+        } catch (NoSuchAlgorithmException e) {
+            // ignore
+        }
+    }
+
     private static class PermissiveTrustManager implements X509TrustManager {
 
-		public X509Certificate[] getAcceptedIssuers() {
-			return null;
-		}
+        public X509Certificate[] getAcceptedIssuers() {
+            return null;
+        }
 
-		public void checkServerTrusted(X509Certificate[] chain,
-				String authType) throws CertificateException {
-		}
+        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+        }
 
-		public void checkClientTrusted(X509Certificate[] chain,
-				String authType) throws CertificateException {
-		}
-	}
+        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+        }
+    }
 
 }
