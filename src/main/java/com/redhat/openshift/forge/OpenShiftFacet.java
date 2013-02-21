@@ -41,6 +41,7 @@ import org.jboss.forge.shell.util.NativeSystemCall;
 
 import com.openshift.client.IApplication;
 import com.openshift.client.ICartridge;
+import com.openshift.client.IDomain;
 import com.openshift.client.IOpenShiftConnection;
 import com.openshift.client.IUser;
 import com.openshift.client.InvalidCredentialsOpenShiftException;
@@ -98,9 +99,21 @@ public class OpenShiftFacet extends BaseFacet {
         configuration.setName(name);
         String password = Util.getPassword(prompt);
         IOpenShiftConnection openshiftService = OpenShiftServiceFactory.create(rhLogin, password, baseUrl);
-        boolean appExists = openshiftService.getUser().getDefaultDomain().hasApplicationByName(name);
-
+        
         IUser user = openshiftService.getUser();
+        
+        if (user == null){
+        	ShellMessages.info(out, "Error. Could not find OpenShift User: " + user.getRhlogin());
+        	return false;
+        }
+        
+        IDomain domain = user.getDefaultDomain();
+        if (domain == null){
+        	ShellMessages.info(out, "Error. Could not find OpenShift Domain for User: " + user.getRhlogin());
+        	return false;
+        }
+        
+        boolean appExists = domain.hasApplicationByName(name);
 
         ShellMessages.info(out, "Found OpenShift User: " + user.getRhlogin());
 
