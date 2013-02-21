@@ -30,7 +30,7 @@ public class OpenShiftConfiguration {
 
     @Inject
     private Configuration persistentConfiguration;
-
+   
     @PostConstruct
     public void load() {
         rhcProperties = new Properties();
@@ -51,7 +51,12 @@ public class OpenShiftConfiguration {
     }
 
     public String getRhLogin() {
-        return persistentConfiguration.getScopedConfiguration(USER).getString(createKey(Key.RHLOGIN));
+    	String rhlogin = Util.unquote(getRhcProperties().getProperty("default_rhlogin"));
+    	
+    	if (rhlogin == null || rhlogin.trim().length() == 0)
+    		rhlogin = persistentConfiguration.getScopedConfiguration(USER).getString(createKey(Key.RHLOGIN));
+    	
+    	return rhlogin;
     }
 
     public void setRhLogin(String rhLogin) {
