@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
+import java.util.Properties;
 
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
@@ -28,13 +29,14 @@ import org.jboss.forge.shell.plugins.SetupCommand;
 import org.jboss.forge.shell.util.NativeSystemCall;
 
 import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
 import com.openshift.client.IApplication;
 import com.openshift.client.IEmbeddableCartridge;
 import com.openshift.client.IEmbeddedCartridge;
 import com.openshift.client.IOpenShiftConnection;
 import com.openshift.client.IUser;
 import com.openshift.client.InvalidCredentialsOpenShiftException;
-import com.openshift.client.JenkinsCartridge;
+import com.openshift.client.ICartridge;
 import com.openshift.client.OpenShiftException;
 import com.redhat.openshift.core.OpenShiftServiceFactory;
 import com.redhat.openshift.forge.jsch.ForgeJschConfigSessionFactory;
@@ -137,11 +139,19 @@ class OpenShiftPlugin implements org.jboss.forge.shell.plugins.Plugin {
         IOpenShiftConnection openshift = OpenShiftServiceFactory.create(rhLogin, password, baseUrl);
         IApplication application = openshift.getUser().getDefaultDomain().getApplicationByName(app);
 
-        String logPath = app + "/logs/*.log";
+        String logPath = "**/logs/*.log";
         String options = "-f -n 100";
 
         JSch.setLogger(jschToForgeLogger);
+      
         String host = String.format("%s-%s.rhcloud.com", application.getName(), application.getDomain().getId());
+        if (baseUrl.contains("amazonaws"))
+        	host = String.format("%s-%s.dev.rhcloud.com", application.getName(), application.getDomain().getId());
+        else if (baseUrl.contains("int."))
+        	host = String.format("%s-%s.int.rhcloud.com", application.getName(), application.getDomain().getId());
+        else if (baseUrl.contains("stg."))
+        	host = String.format("%s-%s.stg.rhcloud.com", application.getName(), application.getDomain().getId());
+        
         URIish uri = new URIish().setHost(host).setUser(application.getUUID());
         BufferedReader br = null;
         try {
@@ -150,6 +160,7 @@ class OpenShiftPlugin implements org.jboss.forge.shell.plugins.Plugin {
             RemoteSession remoteSession = SshSessionFactory.getInstance().getSession(uri, CredentialsProvider.getDefault(),
                     FS.DETECTED, 0);
             String command = buildCommand(logPath, options);
+            
             Process process = remoteSession.exec(command, 0);
             final TailPrintThread tailThread = new TailPrintThread(shell, process, remoteSession);
             while (!shell.promptBoolean("Press 'Q' anytime to stop. Do you understand ?")) {
@@ -307,7 +318,7 @@ class OpenShiftPlugin implements org.jboss.forge.shell.plugins.Plugin {
             jenkinsAppName = "jenkins";
             ShellMessages.info(out, "Adding \"jenkins\" application to domain");
             ShellMessages.info(out, "This is only needed if you haven't used Jenkins with OpenShift before");
-            Util.createApplication(openshiftService, new JenkinsCartridge("jenkins-1.4"), user, jenkinsAppName, false, out);
+            Util.createApplication(openshiftService, ICartridge.JENKINS_14, user, jenkinsAppName, false, out);
             ShellMessages.info(out, "Successfully added \"jenkins\" application to domain");
         }
         ShellMessages.info(out, "Embedding Jenkins client into application \"" + name + "\".");

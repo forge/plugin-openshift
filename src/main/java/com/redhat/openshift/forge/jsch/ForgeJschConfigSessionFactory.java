@@ -22,12 +22,16 @@
 
 package com.redhat.openshift.forge.jsch;
 
+import java.util.Properties;
+
 import javax.inject.Inject;
 
 import org.eclipse.jgit.transport.JschConfigSessionFactory;
 import org.eclipse.jgit.transport.OpenSshConfig.Host;
 
+import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
+import org.eclipse.jgit.util.FS;
 
 /**
  * @author <a href="mailto:benevides@redhat.com">Rafael Benevides</a>
@@ -46,7 +50,21 @@ public class ForgeJschConfigSessionFactory extends JschConfigSessionFactory {
      */
     @Override
     protected void configure(Host hc, Session session) {
-        session.setUserInfo(forgeUserInfo);
+    	
+    	try {
+	        session.setUserInfo(forgeUserInfo);
+	        
+	        //JSch jsch = this.getJSch(hc, FS.DETECTED);
+	        
+	        //Properties config = new Properties();
+	        //config.put("StrictHostKeyChecking", "no");
+			//config.put("GSSAPIAuthentication", "no");
+			//config.put("PreferredAuthentications", "publickey");
+			//jsch.setConfig(config);
+			
+    	} catch (Exception e){
+    		e.printStackTrace();
+    	}
     }
 
 }

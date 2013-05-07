@@ -58,6 +58,8 @@ public class JschToForgeLogger implements com.jcraft.jsch.Logger {
     public void log(int level, String message) {
         switch (level) {
             case DEBUG:
+            	ShellMessages.info(shell, message);
+            	break;
             case INFO:
                 ShellMessages.info(shell, message);
                 break;
@@ -65,6 +67,8 @@ public class JschToForgeLogger implements com.jcraft.jsch.Logger {
                 ShellMessages.warn(shell, message);
                 break;
             case ERROR:
+            	ShellMessages.error(shell, message);
+                break;
             case FATAL:
                 ShellMessages.error(shell, message);
                 break;

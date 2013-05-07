@@ -308,7 +308,7 @@ public class Util {
      * @throws SocketTimeoutException
      */
     public static void healthCheck(IApplication app, String baseUrl, PipeOut out) {
-        String healthCheckURL = app.getHealthCheckUrl();
+        String healthCheckURL = app.getApplicationUrl();
         ShellMessages.info(out, "Checking the Health Check URL: " + healthCheckURL);
         IHttpClient httpClient = new UrlConnectionHttpClientBuilder().client();
         IRestService service = new RestService(baseUrl, null, httpClient);
