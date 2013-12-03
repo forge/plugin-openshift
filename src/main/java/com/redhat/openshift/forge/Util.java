@@ -23,9 +23,6 @@ import org.jboss.forge.shell.plugins.PipeOut;
 import com.openshift.client.ApplicationScale;
 import com.openshift.client.HttpMethod;
 import com.openshift.client.IApplication;
-import com.openshift.client.ICartridge;
-import com.openshift.client.IEmbeddableCartridge;
-import com.openshift.client.IEmbeddedCartridge;
 import com.openshift.client.IHttpClient;
 import com.openshift.client.IOpenShiftConnection;
 import com.openshift.client.IUser;
@@ -33,9 +30,17 @@ import com.openshift.client.InvalidCredentialsOpenShiftException;
 import com.openshift.client.NotFoundOpenShiftException;
 import com.openshift.client.OpenShiftEndpointException;
 import com.openshift.client.OpenShiftException;
+import com.openshift.client.cartridge.IEmbeddableCartridge;
+import com.openshift.client.cartridge.IEmbeddedCartridge;
+import com.openshift.client.cartridge.IStandaloneCartridge;
 import com.openshift.internal.client.IRestService;
 import com.openshift.internal.client.RestService;
 import com.openshift.internal.client.httpclient.UrlConnectionHttpClientBuilder;
+import com.openshift.internal.client.httpclient.request.JsonMediaType;
+import com.openshift.internal.client.httpclient.request.Parameter;
+import com.openshift.internal.client.response.Link;
+import com.openshift.internal.client.response.OpenShiftJsonDTOFactory;
+import com.openshift.internal.client.response.RestResponse;
 
 public class Util {
 
@@ -267,7 +272,7 @@ public class Util {
         }
     }
 
-    public static IApplication createApplication(IOpenShiftConnection openshift, ICartridge cartridge, IUser user, String name,
+    public static IApplication createApplication(IOpenShiftConnection openshift, IStandaloneCartridge cartridge, IUser user, String name,
             boolean scaling, ShellPrintWriter out) throws OpenShiftException {
         // Attempt to create the application
         IApplication application = null;
@@ -311,9 +316,15 @@ public class Util {
         String healthCheckURL = app.getApplicationUrl();
         ShellMessages.info(out, "Checking the Health Check URL: " + healthCheckURL);
         IHttpClient httpClient = new UrlConnectionHttpClientBuilder().client();
-        IRestService service = new RestService(baseUrl, null, httpClient);
+        IRestService service = new RestService(baseUrl,
+            null,
+            new JsonMediaType(),
+            IHttpClient.MEDIATYPE_APPLICATION_JSON,
+            new OpenShiftJsonDTOFactory(),
+            httpClient);
         try {
-            String response = service.request(healthCheckURL, HttpMethod.GET, null);
+            Link healthCheckLink = new Link(healthCheckURL, HttpMethod.GET);
+            RestResponse response = service.request(healthCheckLink, (Parameter[]) null);
             if (response != null){
                 ShellMessages.success(out, "You application is up and running");
             }
