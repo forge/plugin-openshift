@@ -10,7 +10,7 @@
         <forge.api.version>1.0.6.Final</forge.api.version>
         <jgit.version>2.0.0.201206130900-r</jgit.version>
         <log4j.extras.version>1.1</log4j.extras.version>
-        <openshift.client.version>2.0.1</openshift.client.version>
+        <openshift.client.version>2.5.0.Final</openshift.client.version>
         <jsch.version>0.1.48</jsch.version>
     </properties>
     <dependencies>

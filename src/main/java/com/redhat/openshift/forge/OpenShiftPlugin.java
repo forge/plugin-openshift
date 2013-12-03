@@ -4,8 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
-import java.util.Properties;
-
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
 
@@ -29,15 +27,14 @@ import org.jboss.forge.shell.plugins.SetupCommand;
 import org.jboss.forge.shell.util.NativeSystemCall;
 
 import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.Session;
 import com.openshift.client.IApplication;
-import com.openshift.client.IEmbeddableCartridge;
-import com.openshift.client.IEmbeddedCartridge;
 import com.openshift.client.IOpenShiftConnection;
 import com.openshift.client.IUser;
 import com.openshift.client.InvalidCredentialsOpenShiftException;
-import com.openshift.client.ICartridge;
 import com.openshift.client.OpenShiftException;
+import com.openshift.client.cartridge.IEmbeddableCartridge;
+import com.openshift.client.cartridge.IEmbeddedCartridge;
+import com.openshift.client.cartridge.selector.LatestVersionOf;
 import com.redhat.openshift.core.OpenShiftServiceFactory;
 import com.redhat.openshift.forge.jsch.ForgeJschConfigSessionFactory;
 import com.redhat.openshift.forge.jsch.JschToForgeLogger;
@@ -318,7 +315,7 @@ class OpenShiftPlugin implements org.jboss.forge.shell.plugins.Plugin {
             jenkinsAppName = "jenkins";
             ShellMessages.info(out, "Adding \"jenkins\" application to domain");
             ShellMessages.info(out, "This is only needed if you haven't used Jenkins with OpenShift before");
-            Util.createApplication(openshiftService, ICartridge.JENKINS_14, user, jenkinsAppName, false, out);
+            Util.createApplication(openshiftService, LatestVersionOf.jenkins().get(user), user, jenkinsAppName, false, out);
             ShellMessages.info(out, "Successfully added \"jenkins\" application to domain");
         }
         ShellMessages.info(out, "Embedding Jenkins client into application \"" + name + "\".");

@@ -40,12 +40,12 @@ import org.jboss.forge.shell.plugins.Alias;
 import org.jboss.forge.shell.util.NativeSystemCall;
 
 import com.openshift.client.IApplication;
-import com.openshift.client.ICartridge;
 import com.openshift.client.IDomain;
 import com.openshift.client.IOpenShiftConnection;
 import com.openshift.client.IUser;
 import com.openshift.client.InvalidCredentialsOpenShiftException;
 import com.openshift.client.OpenShiftException;
+import com.openshift.client.cartridge.IStandaloneCartridge;
 import com.redhat.openshift.core.OpenShiftServiceFactory;
 
 @Alias("forge.openshift")
@@ -128,7 +128,7 @@ public class OpenShiftFacet extends BaseFacet {
                 return false;
             }
         } else {
-            ICartridge jbossCartridge = getJBossCartridge(openshiftService);
+            IStandaloneCartridge jbossCartridge = getJBossCartridge(openshiftService);
 
             ShellMessages.info(out, "Using JBoss Cartridge: " + jbossCartridge.getName());
             application = Util.createApplication(openshiftService, jbossCartridge, user, name, holder.isScaling(), out);
@@ -170,10 +170,10 @@ public class OpenShiftFacet extends BaseFacet {
 
     }
 
-    private ICartridge getJBossCartridge(IOpenShiftConnection openshiftService) throws OpenShiftException {
-        List<ICartridge> cartridges = openshiftService.getStandaloneCartridges();
-        List<ICartridge> jbossCartdriges = new ArrayList<ICartridge>();
-        for (ICartridge cartridge : cartridges) {
+    private IStandaloneCartridge getJBossCartridge(IOpenShiftConnection openshiftService) throws OpenShiftException {
+        List<IStandaloneCartridge> cartridges = openshiftService.getStandaloneCartridges();
+        List<IStandaloneCartridge> jbossCartdriges = new ArrayList<IStandaloneCartridge>();
+        for (IStandaloneCartridge cartridge : cartridges) {
             if (cartridge.getName().contains("jboss")) {
                 jbossCartdriges.add(cartridge);
             }
