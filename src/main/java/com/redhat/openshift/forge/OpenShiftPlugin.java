@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
-import java.util.Properties;
 
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
@@ -29,14 +28,13 @@ import org.jboss.forge.shell.plugins.SetupCommand;
 import org.jboss.forge.shell.util.NativeSystemCall;
 
 import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.Session;
 import com.openshift.client.IApplication;
+import com.openshift.client.ICartridge;
 import com.openshift.client.IEmbeddableCartridge;
 import com.openshift.client.IEmbeddedCartridge;
 import com.openshift.client.IOpenShiftConnection;
 import com.openshift.client.IUser;
 import com.openshift.client.InvalidCredentialsOpenShiftException;
-import com.openshift.client.ICartridge;
 import com.openshift.client.OpenShiftException;
 import com.redhat.openshift.core.OpenShiftServiceFactory;
 import com.redhat.openshift.forge.jsch.ForgeJschConfigSessionFactory;
@@ -144,13 +142,16 @@ class OpenShiftPlugin implements org.jboss.forge.shell.plugins.Plugin {
 
         JSch.setLogger(jschToForgeLogger);
       
-        String host = String.format("%s-%s.rhcloud.com", application.getName(), application.getDomain().getId());
-        if (baseUrl.contains("amazonaws"))
-        	host = String.format("%s-%s.dev.rhcloud.com", application.getName(), application.getDomain().getId());
-        else if (baseUrl.contains("int."))
-        	host = String.format("%s-%s.int.rhcloud.com", application.getName(), application.getDomain().getId());
-        else if (baseUrl.contains("stg."))
-        	host = String.format("%s-%s.stg.rhcloud.com", application.getName(), application.getDomain().getId());
+	String hostFormat = "%s-%s.rhcloud.com";
+	if (baseUrl != null) {
+	    if (baseUrl.contains("amazonaws"))
+		hostFormat = "%s-%s.dev.rhcloud.com";
+	    else if (baseUrl.contains("int."))
+		hostFormat = "%s-%s.int.rhcloud.com";
+	    else if (baseUrl.contains("stg."))
+		hostFormat = "%s-%s.stg.rhcloud.com";
+	}
+        String host = String.format(hostFormat, application.getName(), application.getDomain().getId());
         
         URIish uri = new URIish().setHost(host).setUser(application.getUUID());
         BufferedReader br = null;
