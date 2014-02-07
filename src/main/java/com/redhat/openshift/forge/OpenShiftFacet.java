@@ -103,7 +103,7 @@ public class OpenShiftFacet extends BaseFacet {
         IUser user = openshiftService.getUser();
         
         if (user == null){
-        	ShellMessages.info(out, "Error. Could not find OpenShift User: " + user.getRhlogin());
+        	ShellMessages.info(out, "Error. Could not find OpenShift User: " + rhLogin);
         	return false;
         }
         
