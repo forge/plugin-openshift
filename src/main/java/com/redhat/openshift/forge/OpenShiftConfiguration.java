@@ -35,7 +35,13 @@ public class OpenShiftConfiguration {
     public void load() {
         rhcProperties = new Properties();
         try {
-            rhcProperties.load(new FileReader(EXPRESS_CONF));
+	    FileReader reader = null;
+	    try {
+		reader = new FileReader(EXPRESS_CONF);
+		rhcProperties.load(reader);
+	    } finally {
+		reader.close();
+	    }
             ShellMessages.info(out, "Loaded OpenShift configuration from " + EXPRESS_CONF);
         } catch (Exception e) {
             // Swallow
