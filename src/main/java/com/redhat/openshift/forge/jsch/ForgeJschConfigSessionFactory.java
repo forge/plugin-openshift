@@ -22,16 +22,19 @@
 
 package com.redhat.openshift.forge.jsch;
 
-import java.util.Properties;
-
 import javax.inject.Inject;
 
 import org.eclipse.jgit.transport.JschConfigSessionFactory;
 import org.eclipse.jgit.transport.OpenSshConfig.Host;
+import org.eclipse.jgit.util.FS;
 
+import com.jcraft.jsch.IdentityRepository;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
-import org.eclipse.jgit.util.FS;
+import com.jcraft.jsch.agentproxy.AgentProxyException;
+import com.jcraft.jsch.agentproxy.Connector;
+import com.jcraft.jsch.agentproxy.ConnectorFactory;
+import com.jcraft.jsch.agentproxy.RemoteIdentityRepository;
 
 /**
  * @author <a href="mailto:benevides@redhat.com">Rafael Benevides</a>
@@ -45,8 +48,9 @@ public class ForgeJschConfigSessionFactory extends JschConfigSessionFactory {
     /*
      * (non-Javadoc)
      * 
-     * @see org.eclipse.jgit.transport.JschConfigSessionFactory#configure(org.eclipse.jgit.transport.OpenSshConfig.Host,
-     * com.jcraft.jsch.Session)
+     * @see
+     * org.eclipse.jgit.transport.JschConfigSessionFactory#configure(org.eclipse
+     * .jgit.transport.OpenSshConfig.Host, com.jcraft.jsch.Session)
      */
     @Override
     protected void configure(Host hc, Session session) {
@@ -54,8 +58,20 @@ public class ForgeJschConfigSessionFactory extends JschConfigSessionFactory {
     	try {
 	        session.setUserInfo(forgeUserInfo);
 	        
-	        //JSch jsch = this.getJSch(hc, FS.DETECTED);
-	        
+	        JSch jsch = this.getJSch(hc, FS.DETECTED);
+	        JSch.setConfig("PreferredAuthentications", "publickey");
+
+	    Connector con;
+	    try {
+		ConnectorFactory cf = ConnectorFactory.getDefault();
+		con = cf.createConnector();
+		if (con != null) {
+		    IdentityRepository irepo = new RemoteIdentityRepository(con);
+		    jsch.setIdentityRepository(irepo);
+		}
+	    } catch (AgentProxyException e) {
+		System.out.println(e);
+	    }
 	        //Properties config = new Properties();
 	        //config.put("StrictHostKeyChecking", "no");
 			//config.put("GSSAPIAuthentication", "no");
@@ -66,5 +82,4 @@ public class ForgeJschConfigSessionFactory extends JschConfigSessionFactory {
     		e.printStackTrace();
     	}
     }
-
 }
