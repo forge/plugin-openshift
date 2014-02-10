@@ -171,6 +171,8 @@ class OpenShiftPlugin implements org.jboss.forge.shell.plugins.Plugin {
                 int key = shell.scan();
                 if (key == 'q' || key == 'Q'){
                     tailThread.stopTail();
+                }else if(Character.isWhitespace(key)){
+                    shell.print(Character.toString((char)key));
                 }
             }
             ShellMessages.info(shell, "Tail stopped");
